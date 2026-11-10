@@ -46,7 +46,7 @@
 - `tests/layout/s5-s6.test.js` — 17, כולל מדיניות הערה ארוכה במסלול אמיתי (dp-planner).
 - `tests/e2e/*` — pipeline 14, s7-gate 15, canonical 6 (קורפוס קנוני).
 - `tests/audit/negative-controls.test.js` — 16 בדיקות anti-false-positive.
-- **אוסף הבדיקות ההיסטורי של חמשת הריפואים (21 תרחישי IMUD וכו') לא הועבר** — נרשם כפער; הבדיקות שנכתבו מכסות את אותם שטחים לפי המפרט. ראה ISSUE_REGISTRY FWD-4 לקורפוס.
+- **סוויטת layout ההיסטורית של IMUD main נשמרה בארכיון** (`reference-archive/cross-repo-2026-11-10/imud-main/layout-scenarios/`): scenarios.js, baseline.json, runner, checker, common helper ושני מסמכי קלט. ה-baseline בקומיט המקור הנעול מכיל 38 רשומות; README המקורי עדיין אומר 21 ולכן הוא stale. הסוויטה לא רצה נגד RED ואינה CI. FWD-4 הוא פריט נפרד: קורפוס הטקסט הארוך מ-IMUD כבר יובא ל-fixture פעיל ונבדק לפי ISSUE_REGISTRY.
 
 
 ## העברות נתונים בין מאגרים — 10.11.2026
@@ -64,3 +64,25 @@
 - Commit הייבוא ב-RED Work: `78d0597b025f3b1586fc38d2cd4382a269b13adc`.
 - הקבצים הם ארכיון מקור בלבד: אינם מחוברים ל-`npm test`, ל-CI או לנתיב יצירת מסמכים; לא הורצו נגד RED. אין לראות בהם fixtures תקינים ל-D-100 בלי התאמה ובדיקה נפרדות.
 - ה-runner וה-generator הישנים לא הועתקו: הם קשורים ל-iframe ול-`window.__geomAudit` של Gold, ולתחביר מקור קודם.
+
+
+## ארכיון בין-ריפואי — עדכון מלא 10.11.2026
+
+- **נתיב:** `reference-archive/cross-repo-2026-11-10/`; אינדקס קובץ-מול-מקור: `reference-archive/cross-repo-2026-11-10/README.md`.
+- נשמרו **75 קובצי מקור**: Gold V21, Green V23, Orange main, Yellow V22, React main, Kotlin main, Rust main, Typesetter_doc main ו-IMUD main. לכל קובץ נרשמו source ref, commit נעול, path מקורי ו-Git blob ID; זהות blob ביעד אומתה מול המקור.
+- בין החומרים: שיטות audit רב-שלבי, מודולי diagnostics/trace ישנים ובדיקותיהם, screenshot report helper, 11 line-battery raw inputs של React, 38 תרחישי layout היסטוריים של IMUD baseline, מפרטי/ADRs/מחקרים/מפות תלויות/מטריצות תאימות.
+- **גבול הפעלה:** כל 75 הקבצים ארכיוניים בלבד; אינם נטענים ב-runtime, אינם ב-`npm test`, אינם ב-corpus manifests ואינם ב-GitHub Actions. אין להריץ renderer/runner ישנים מול RED. כל התאמה עתידית תיכתב כקובץ RED חדש, מחוץ לארכיון.
+- **הבהרת ספירה:** baseline של סוויטת IMUD הנעולה מכיל 38 שמות תרחיש; README המקור אומר 21 והוא stale. אין להשתמש ב-page counts/violation counts של baseline כהגדרת הצלחה ל-RED.
+
+### אימות סוויטת IMUD ההיסטורית
+
+- מקור: `SUGINACH/IMUD_TORANI@da31142ed868da987b14af5213b41495e81733c4`.
+- הועברו 8 קבצים: `tests/layout/scenarios.js`, `baseline.json`, `run-suite.js`, `check_layout.js`, `tests/lib/common.js`, `tests/README.md`, `tests/corpus/problem_chapters.txt`, `test_doc.txt`.
+- כל 8 Git blob IDs תואמים למקור. ה-harness הישן דורש Playwright/Chromium, root page, DOM selectors ומזהי הגדרות של IMUD; אין להריצו מול RED.
+- המחולל הדטרמיניסטי יכול לשמש בעתיד מקור לבחירת קלטים סמנטיים, לאחר בדיקת כיסוי ו-D-100, אך אין להעתיק את baseline/הציפיות שלו ואין לבצע השוואת שורות/מילים/פסקאות.
+
+### Makom Bina v20.5 — מצב שימוש בפועל
+
+- ארבעת JSON נמצאים ב-`red-build/ui/assets/imud/presets/makom-bina-v20.5/` ואומתו (249 מפתחות בכל אחד).
+- הקוד הפעיל `red-build/src/ui/imud-library.js` עדיין מגדיר רק `SETTING_SETS = ['תלמוד', 'פרשנות', 'קונטרס']` וקורא מ-`assets/imud/setting_sets/`. לכן נתוני Makom Bina נשמרו אך **אינם מוצגים כרגע בבורר הפעיל**.
+- נדרשת הרחבת UI נפרדת לקבוצת preset בעלת מקור/גרסה, preview והחלה מפורשת. אין לשנות default או להחליף את שלוש הערכות הרגילות.
