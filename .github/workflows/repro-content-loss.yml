@@ -1,0 +1,35 @@
+name: repro-content-loss
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'execution/repro/content-loss-two-words.js'
+      - '.github/workflows/repro-content-loss.yml'
+      - 'red-build/src/ui/test-doc-generator.js'
+      - 'red-build/src/engine/layout/legacy-imud-flow.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Reproduce fixed-document content loss in the Legacy/IMUD path
+        run: node execution/repro/content-loss-two-words.js
+      - name: Upload exact input and diagnostic report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: content-loss-two-words-repro
+          path: |
+            execution/repro/out/content-loss-report.json
+            execution/repro/out/fixed-test-document.txt
+          if-no-files-found: error
