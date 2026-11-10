@@ -1,5 +1,5 @@
 # PROVENANCE.md — מקורות וייחוס · Tora Book Typesetter Red
-> מצב: 05.11.2026 (סגירת EXT-9 — גופני אמת במדידה ובייצוא).
+> מצב: 10.11.2026 (ייבוא נתוני Makom Bina v20.5 וקורפוס Gold V21; הקפאת P6/P7).
 
 ## קוד
 - **בסיס:** בנייה מאפס (from-scratch) לפי `spec/01_MASTER_SPECIFICATION.md` + `spec/02_MASTER_WORK_PLAN.md`. אין העתקת קוד ריצה מהגרסאות הקודמות; יש **היסק לקחים** מתועדים (lessons) שהומרו למנגנונים ולבדיקות.
@@ -47,3 +47,20 @@
 - `tests/e2e/*` — pipeline 14, s7-gate 15, canonical 6 (קורפוס קנוני).
 - `tests/audit/negative-controls.test.js` — 16 בדיקות anti-false-positive.
 - **אוסף הבדיקות ההיסטורי של חמשת הריפואים (21 תרחישי IMUD וכו') לא הועבר** — נרשם כפער; הבדיקות שנכתבו מכסות את אותם שטחים לפי המפרט. ראה ISSUE_REGISTRY FWD-4 לקורפוס.
+
+
+## העברות נתונים בין מאגרים — 10.11.2026
+
+### IMUD_TORANI — preset מקום בינה v20.5
+- מקור: `SUGINACH/IMUD_TORANI@da31142ed868da987b14af5213b41495e81733c4`, נתיב `presets/makom-bina-v20.5/`.
+- יובאו ללא טרנספורמציה ל-`red-build/ui/assets/imud/presets/makom-bina-v20.5/`: `default_settings.json` ושלושת קובצי `setting_sets` (תלמוד, פרשנות, קונטרס).
+- כל ארבעת הקבצים אומתו כ-JSON עם 249 מפתחות. ברירות המחדל זהות בתוכן ל-fixture שכבר היה ב-RED; שלוש ערכות הסגנון שונות מהערכות הרגילות ולכן נשמרו בנתיב preset נפרד.
+- Commit הייבוא ב-RED Work: `bb5996e012e2abd3cf8b8ed6fb6ac393e831b771`.
+- הייבוא הוא data-only: לא חובר אוטומטית ל-UI, לא שינה הגדרות פעילות ולא השפיע על ה-pipeline.
+
+### Gold V21 — test-triggers
+- מקור: `SUGINACH/Tora_Book_Typesetter_Gold@a444d34ccad30fd5ed0d6fd3873adbe9c23cb7e0`, נתיב `test-triggers/`.
+- עשרת קובצי הטריגרים הועתקו ללא שינוי אל `red-build/tests/fixtures/legacy-trigger-corpus/gold-v21/`; Git blob IDs של הקבצים המיובאים זהים ל-Gold.
+- Commit הייבוא ב-RED Work: `78d0597b025f3b1586fc38d2cd4382a269b13adc`.
+- הקבצים הם ארכיון מקור בלבד: אינם מחוברים ל-`npm test`, ל-CI או לנתיב יצירת מסמכים; לא הורצו נגד RED. אין לראות בהם fixtures תקינים ל-D-100 בלי התאמה ובדיקה נפרדות.
+- ה-runner וה-generator הישנים לא הועתקו: הם קשורים ל-iframe ול-`window.__geomAudit` של Gold, ולתחביר מקור קודם.

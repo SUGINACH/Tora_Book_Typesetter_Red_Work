@@ -520,6 +520,13 @@
 - הערת שוליים לבדה אינה טקסט גוף, וכותרת שתוכנה שלה הוא הערת שוליים בלבד אינה תקינה.
 - יש לדחות מסמך פגום באבחון מפורש לפני המדידה; אין לבצע תיקון מבני אוטומטי ושקט.
 
+## U-H. הוראת משתמש — השעיה מלאה של P6/P7 (10.11.2026) [USER-EXPLICIT]
+
+- אין להריץ, לחשב, להציג, לנתח או להשתמש במדדי P6/P7 בשלב הנוכחי.
+- אין לבצע התאמת פסקאות, מילים או שורות מול PDF היסטורי, ואין לבסס על המדדים שינוי במנוע או החלטת איכות.
+- קוד וכלי השוואה ישנים נשארים חומר ארכיוני בלבד; הם אינם חלק מ-CI או מתוכנית העבודה הפעילה.
+- בדיקות שימור תוכן, גיאומטריה, דטרמיניזם ודרישות RED עצמאיות ממשיכות לפי חוזיהן, בלי תלות במדדים אלה.
+
 ---
 
 # חלק ט׳ — ארכיטקטורה יעד (Target Architecture)
@@ -592,7 +599,7 @@ widow=אלמנה · orphan=יתום · sparse-line=שורה דלילה · imbala
 
 # נספח 2 — Test corpus manifest
 
-canonical `very_long_test_text.txt`(5,702L, sha 5e73b913…) · very_long_test_text_2 · ch63_final_paragraph_failure_case · chapters_focus/ · fixtures: capacity-before-h3, section-end-before-divider, consecutive-notes, long-footnote-split, nested-parens, cross-column-parens, mid-doc-metadata-like-line, single-word-paragraph, heading-run, toc-stress, verso-headers, dropword-align, qa-modes(3), aq-on-off, folder-assets-import, docx-sample, shaar-set-roundtrip, print-parity, offline-guard, determinism-repeat, trigger-matrix(Gold test-triggers 6 kinds), 21 IMUD scenarios, 8 IMUD feature suites.
+canonical `very_long_test_text.txt`(5,702L, sha 5e73b913…) · very_long_test_text_2 · ch63_final_paragraph_failure_case · chapters_focus/ · fixtures: capacity-before-h3, section-end-before-divider, consecutive-notes, long-footnote-split, nested-parens, cross-column-parens, mid-doc-metadata-like-line, single-word-paragraph, heading-run, toc-stress, verso-headers, dropword-align, qa-modes(3), aq-on-off, folder-assets-import, docx-sample, shaar-set-roundtrip, print-parity, offline-guard, determinism-repeat, trigger-matrix (Gold V21, 10 קובצי טקסט הועברו לארכיון בלבד; אינם fixtures פעילים ואינם ב-CI עד התאמה נפרדת ל-D-100), 21 IMUD scenarios, 8 IMUD feature suites.
 
 # נספח 3 — Decision log (D-series, מחייב תחזוקה)
 

@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  layout-parity:
+  layout-invariants:
     runs-on: ubuntu-latest
     # **S5.2 (P-11):** תקרה מפורשת לכל job — בלי זה ריצה תקועה מחזיקה ראנר
     # עד חיתוך ברירת המחדל של GitHub (360 דק').
@@ -27,7 +27,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
 
       - name: Run RED through the live path (IMUD defaults + real font → model + PDF)
         run: node tools/layout-parity/run-ours.js

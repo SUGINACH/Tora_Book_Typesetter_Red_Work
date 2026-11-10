@@ -2789,3 +2789,40 @@ CI על HEAD `53834bc` אישר `s52-dp-fixes` ‏23/23 ו-`s52-ui-fixes` ‏18/
 - Rebuild Bundles `42841234517`: success.
 
 אחרי ריצה זו תוקנו fixtures של F6/R3-C1 ב-`18c8e20`, מפריד השורות של F6 אומת ותוקן ב-`b036c22`, ונוסף הבהרת תיעוד ב-`4e083ac`. ריצת CI `42841577553` על `80d4723` קדמה לתיקוני S6.0 ולכן אינה מאמתת אותם. ה-Full Math `42841577839` על אותו HEAD עדיין היה in_progress בבדיקה האחרונה. ה-HEAD הנוכחי הוא `4e083ac`; לא התקבלה עדיין ריצת Actions המשויכת ל-HEAD זה. לכן סטטוס PR #6 נשאר **לא מאומת במלואו** ולא מוכן למיזוג.
+
+
+## Session 8 — ייבוא נתונים בטוח ומיקוד בין-ריפואי (10.11.2026)
+
+**הוראת משתמש:** P6/P7 הושארו לחלוטין מחוץ למסלול העבודה. אין להריץ, לחשב, להציג, לנתח או להשתמש בהם — ובפרט אין התאמת מילים/שורות/פסקאות. ההוראה הוטמעה ב-`spec/REFERENCE_AND_ACCEPTANCE_POLICY.md`, בתוכנית הראשית, בתוכנית הסוכנים וב-workflow הפעיל.
+
+### שינויים שהושלמו
+
+1. **IMUD Makom Bina v20.5 — data-only import**
+   - ארבעה קובצי JSON הועברו ל-`red-build/ui/assets/imud/presets/makom-bina-v20.5/`.
+   - כל הקבצים עברו JSON.parse ובדיקת 249 מפתחות. default_settings זהה byte-for-byte ל-fixture הקיים; שלוש ערכות הסגנון נבדלות מהערכות הרגילות ונשמרו בנפרד.
+   - המקור ננעל ל-`IMUD_TORANI@da31142ed868da987b14af5213b41495e81733c4`; commit RED Work `bb5996e`.
+   - אין טעינה או הפעלה אוטומטית; אין שינוי בקוד או בהגדרות הפעילות.
+2. **Gold V21 trigger corpus — archive-only import**
+   - עשרת קובצי `test-triggers` הועתקו ל-`red-build/tests/fixtures/legacy-trigger-corpus/gold-v21/` ללא טרנספורמציה. Git blob IDs נבדקו ונמצאו זהים למקור.
+   - המקור ננעל ל-`Gold@a444d34ccad30fd5ed0d6fd3873adbe9c23cb7e0`; commit RED Work `78d0597`.
+   - לא חוברו ל-CI או ל-`npm test`, ולא הורצו; README בתיקייה מתעד את מגבלות התחביר והצורך בהתאמה ל-D-100.
+   - runner/generator הישנים לא הועתקו כי הם תלויים ב-iframe וב-API של Gold.
+3. **P6/P7**
+   - commit `97d8659` מסיר את comparator ההיסטורי ממסלול Actions הפעיל ומשנה את שם ה-workflow ל-`layout-invariants`.
+   - נשמרים מסלול RED החי, האודיט העצמאי ובדיקות הקורפוס C1–C12. ה-workflow אינו מחלץ עוד PDF היסטורי או מפיק דוח legacy.
+   - `verify-corpus.py` מייבא עדיין פונקציות עזר טהורות מתוך `compare.py` לצורך חישובי C; אין הפעלה של נקודת הכניסה של comparator ואין חישובי P6/P7. פירוק התלות הטכנית הזאת ייעשה רק אם יידרש, בלי להחזיר את המדדים.
+
+### סיווג מקורות (ראשוני)
+
+- **כבר קיים ב-RED:** ספריית גופנים IMUD והקטלוג המורחב, ornaments/dividers/shaar assets, שלוש ערכות הסגנון הרגילות, IMUD migration + source-variant tests, worker, DOCX, export, settings persistence, test-document generator, audit/ledger/trace ויכולות מנוע שהוסקו מ-Gold/Green.
+- **יובא כעת בבטחה:** preset Makom Bina v20.5 (נתונים בלבד); קורפוס Gold V21 (ארכיון לא-פעיל).
+- **דורש gap analysis לפני ייבוא:** Gold step-by-step audit / audit-expansion / text-integrity; Yellow engine-inputs/trace/diagnostics; כלים ליצירת דוחות screenshots של Green; generator/runner של Gold; בדיקות legacy נוספות.
+- **לא להעתיק ישירות:** geometry-audit CLI מ-Green הקשור ל-renderer ישן; מנועי TypeScript/React, Kotlin ו-Rust; Orange כקו בסיס שכבר משולב; Red_Work_2 כעותק אח/השוואה בלבד.
+
+### החלטות בטיחות
+
+- לא שונה קובץ מנוע או הגדרה פעילה במהלך שני ייבואי הנתונים.
+- לא נוספו fixtures ל-CI ולא הורצו קבצי Gold; אין בדיקה כבדה נוספת שנדרשת כדי לקבל את הנתונים בארכיון.
+- כל ייבוא נוסף יכלול מקור commit, path מקור, hash/blob, נתיב יעד, סטטוס התאמה והצהרה מפורשת אם הוא פעיל או ארכיוני.
+
+המשך העבודה לפי `spec/CROSS_REPOSITORY_IMPORT_PLAN.md`.
