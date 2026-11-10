@@ -658,8 +658,12 @@ describe('Makom Bina v20.5 — preset מבודד ב-IMUD UI', () => {
           249, setId + ': כל מפתחות המקור קיבלו disposition');
         assert(result.settings && typeof result.settings === 'object', setId + ': הגדרות מיובאות');
       }
-      assert.throws(() => lib.loadSettingPreset('unknown', 'default'), /preset לא מוכר/);
-      assert.throws(() => lib.loadSettingPreset(PRESET_ID, '../default_settings'), /ערכה לא מוכרת/);
+      let unknownPresetRejected = false;
+      try { await lib.loadSettingPreset('unknown', 'default'); } catch (e) { unknownPresetRejected = /preset לא מוכר/.test(e.message); }
+      assert(unknownPresetRejected, 'preset לא מוכר נדחה באופן מפורש');
+      let unknownSetRejected = false;
+      try { await lib.loadSettingPreset(PRESET_ID, '../default_settings'); } catch (e) { unknownSetRejected = /ערכה לא מוכרת/.test(e.message); }
+      assert(unknownSetRejected, 'נתיב/שם ערכה לא מוכר נדחה לפני fetch');
     } finally { restore(); }
   });
 
