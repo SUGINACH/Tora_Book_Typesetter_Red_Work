@@ -7,7 +7,7 @@ name: layout-parity
 # ל-audits/layout-reference.json לצורך השוואה היסטורית בלבד. אין לפרש ציון
 # P1-P9 כהערכת איכות RED או להשתמש בו כהוראת תיקון מנוע:
 #
-#   HARD   — אינווריאנטים מוחלטים: שימור תוכן, אפס חפיפות, גבולות עמוד, יישור.
+#   HARD   — שימור תוכן, אפס חפיפות וגבולות עמוד. מדד יישור H4 הוא LEGACY.
 #   LEGACY — דמיון ל-PDF הישן: נתון דיאגנוסטי בלבד. שינוי מכוון ב-RED יכול
 #             להוריד את הציון בלי להיות רגרסיה.
 #
@@ -112,7 +112,7 @@ jobs:
   # הבדיקה היא באינווריאנטים מוחלטים בלבד (verify-corpus.py): תכונות שכל
   # עימוד נכון חייב לקיים בפני עצמו, בלי תלות באף פלט חיצוני —
   #   C1 שימור תוכן (מולטיסט מילים) · C2 אפס חפיפות · C3 גבולות עמוד ·
-  #   C4 יישור · C5 רצף עמודונים · C6 מכונת מצבים · C7 שלמות תוכן-עניינים ·
+  #   C4 מדד איכות יישור (מידע בלבד כברירת מחדל) · C5 רצף עמודונים · C6 מכונת מצבים · C7 שלמות תוכן-עניינים ·
   #   C8 כותרות עליונות · C9 שימור כותרות · C10 הערות שוליים · C11 PDF תקין ·
   #   C12 ייצוא HTML (S4.11 — אותו רינדור כמו התצוגה החיה).
   # בנוסף: דטרמיניזם (הרצה כפולה — hash ועמודים זהים) בתוך run-ours.js,
@@ -140,7 +140,7 @@ jobs:
       - name: Run RED on the very large corpus (live path + determinism double-run + HTML export)
         run: node tools/layout-parity/run-ours.js audits/very_long_test_text.txt audits/very-long-artifacts --determinism --html
 
-      - name: Absolute invariants verification (C1..C12 — כולל ייצוא HTML)
+      - name: Corpus invariants + informational alignment metric (C1..C12 — כולל ייצוא HTML)
         run: |
           python3 tools/layout-parity/verify-corpus.py \
             audits/very_long_test_text.txt \
