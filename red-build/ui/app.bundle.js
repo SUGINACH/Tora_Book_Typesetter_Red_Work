@@ -3518,8 +3518,8 @@ function buildImudPicker(doc, opts) {
   setsWrap.appendChild(setsSel);
   wrap.appendChild(setsWrap);
 
-  // Preset נפרד ממקום בינה v20.5. אינו מחליף את שלוש ערכות המקור הרגילות.
-  // החלה מתבצעת רק לאחר בחירה מפורשת, דרך אותו מסלול applyLegacyDefaults.
+  // Preset נפרד ממקום בינה v20.5. בחירה טוענת preview בלבד; החלה דורשת לחיצה נפרדת.
+  // אין שינוי בשלוש ערכות המקור הרגילות או ב-default_settings הכללי.
   const presetWrap = doc.createElement('div');
   presetWrap.className = 'row';
   const presetLbl = doc.createElement('label');
@@ -3529,24 +3529,77 @@ function buildImudPicker(doc, opts) {
   presetSel.className = 'ctl';
   presetSel.setAttribute('aria-label', 'בחירת preset נוסף מהמקור');
   presetSel.appendChild(Object.assign(doc.createElement('option'), { textContent: '— בחר preset —', value: '' }));
+
+  const presetPreview = doc.createElement('div');
+  presetPreview.className = 'action-info';
+  presetPreview.setAttribute('role', 'status');
+  presetPreview.setAttribute('aria-live', 'polite');
+  presetPreview.textContent = 'בחירת ערכה תציג מקור, גרסה וסיכום השינויים לפני החלה.';
+  const presetApplyBtn = doc.createElement('button');
+  presetApplyBtn.type = 'button';
+  presetApplyBtn.className = 'btn';
+  presetApplyBtn.textContent = 'החל את הערכה לאחר preview';
+  presetApplyBtn.setAttribute('aria-label', 'החלת ערכת preset לאחר תצוגה מקדימה');
+  presetApplyBtn.disabled = true;
+
+  let pendingPresetResult = null;
   presetSel.addEventListener('change', async () => {
     const choice = presetSel.value;
-    if (!choice) return;
+    pendingPresetResult = null;
+    presetApplyBtn.disabled = true;
+    if (!choice) {
+      presetPreview.textContent = 'לא נבחרה ערכת preset.';
+      return;
+    }
     const sep = choice.indexOf('::');
     const presetId = sep >= 0 ? choice.slice(0, sep) : '';
     const setId = sep >= 0 ? choice.slice(sep + 2) : '';
+    if (!presetId || !setId) {
+      presetPreview.textContent = 'בחירת preset אינה תקינה.';
+      return;
+    }
+    presetPreview.textContent = 'טוען תצוגה מקדימה — ההגדרות הפעילות עדיין לא משתנות…';
     try {
       const result = await opts.imudLibrary.loadSettingPreset(presetId, setId);
-      if (opts.onApplyLegacyDefaults) opts.onApplyLegacyDefaults(result.settings);
-      if (opts.onNotice) opts.onNotice(
-        `הוחל ${result.presetLabel} — ${result.setLabel}: ${result.report.mapped} הגדרות מופו, ${result.report.uiState} ערכי UI נשמרו. ברירות המחדל הרגילות לא שונו.`
-      );
+      // בחירה חדשה בזמן טעינה מבטלת תצוגה מקדימה ישנה.
+      if (presetSel.value !== choice) return;
+      pendingPresetResult = result;
+      const current = opts.getSettings ? opts.getSettings() : {};
+      const changed = Object.keys(result.settings || {}).filter((key) => !Object.is(current[key], result.settings[key])).length;
+      const unmapped = Array.isArray(result.unmapped) ? result.unmapped.length : 0;
+      presetPreview.textContent =
+        `תצוגה מקדימה: ${result.presetLabel} — ${result.setLabel} | מקור: ${result.source} | גרסה: ${result.version}. ` +
+        `${result.report.mapped} הגדרות ימופו, ${result.report.merged} יאוחדו, ${result.report.uiState} ערכי UI יישמרו, ${result.report.removed} יירשמו כהוסרו; ` +
+        `${changed} ערכים שונים מההגדרות הפעילות, ${unmapped} מפתחות ללא מיפוי.`;
+      presetApplyBtn.disabled = false;
     } catch (e) {
-      presetSel.value = '';
+      if (presetSel.value !== choice) return;
+      pendingPresetResult = null;
+      presetPreview.textContent = 'טעינת תצוגה מקדימה נכשלה: ' + (e && e.message ? e.message : e);
       if (opts.onNotice) opts.onNotice('טעינת ה-preset נכשלה: ' + (e && e.message ? e.message : e));
     }
   });
+  presetApplyBtn.addEventListener('click', () => {
+    const result = pendingPresetResult;
+    if (!result) return;
+    const choice = presetSel.value;
+    if (choice !== `${result.presetId}::${result.setId}`) {
+      pendingPresetResult = null;
+      presetApplyBtn.disabled = true;
+      presetPreview.textContent = 'הבחירה השתנתה; יש לטעון תצוגה מקדימה חדשה.';
+      return;
+    }
+    if (opts.onApplyLegacyDefaults) opts.onApplyLegacyDefaults(result.settings);
+    presetApplyBtn.disabled = true;
+    pendingPresetResult = null;
+    presetPreview.textContent = `הוחלה ${result.presetLabel} — ${result.setLabel} (מקור ${result.source}, גרסה ${result.version}).`;
+    if (opts.onNotice) opts.onNotice(
+      `הוחל ${result.presetLabel} — ${result.setLabel}: ${result.report.mapped} הגדרות מופו, ${result.report.uiState} ערכי UI נשמרו. ברירות המחדל הרגילות לא שונו.`
+    );
+  });
   presetWrap.appendChild(presetSel);
+  presetWrap.appendChild(presetPreview);
+  presetWrap.appendChild(presetApplyBtn);
   wrap.appendChild(presetWrap);
 
   // כפתור ברירות המחדל המקוריות — ייבוא 264 המפתחות דרך טבלת ה-disposition
