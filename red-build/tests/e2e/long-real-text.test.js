@@ -99,8 +99,8 @@ describe('D-83 — ספרי־אמת ארוכים: עימוד מלא ללא קר�
   it('FWD-4: Orange historical corpus is rejected before DP and Legacy layout (D-100)', () => {
     const HIST = path.join(REAL_DIR, 'orange_very_long_test_text.txt');
     const raw = fs.readFileSync(HIST, 'utf8');
-    assertEq(raw.split('\\n').length, 5703, '5,702 lines + terminal line (source)');
-    const lines = raw.split('\\n');
+    assertEq(raw.split('\n').length, 5703, '5,702 lines + terminal line (source)');
+    const lines = raw.split('\n');
     assertEq(lines[0], 'שם הספר - מקום בינה', 'source title');
     const dupHead = lines.filter(l => l === 'כותרת 6 - *').length;
     assert(dupHead === 6, `כותרת 6 - * חוזרת 6 פעמים במקור (מצאנו ${dupHead})`);
