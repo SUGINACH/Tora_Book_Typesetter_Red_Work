@@ -130,11 +130,12 @@ describe('S62.1 שאלה 4 — איזון טורים בזרימת המקור (ס
     assertEq(rCorpus.contentPreserved, true, 'שימור תוכן על הקורפוס האמיתי');
 
     const outputCount = (tokenId) => {
+      const numericId = Number(String(tokenId).replace(/^lt/, ''));
       let count = 0;
       for (const page of result.pages) {
         for (const column of page.columns || []) {
           for (const line of column || []) {
-            if (String(line.tokenId) === String(tokenId)) count++;
+            if (Number(line.tokenId) === numericId) count++;
           }
         }
       }
