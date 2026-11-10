@@ -1,5 +1,7 @@
 # WORKLOG.md — יומן עבודה לפי שלב · Tora Book Typesetter Red
-> כלל: כל שלב מתועד עם מה נעשה, ראיות ובדיקות. עדכון אחרון: 10.11.2026 (S6.4 — תיקון אובדן כותרת H5 ושכפול H6 במסלול Legacy/IMUD; סוויטת S6.2 13/13; C1–C12 בקורפוס הארוך 12/12; HARD 4/4; P6/P7 נותרו 12/14 ו-88.9% ללא החמרה; בניית Worker bundles סונכרנה בענף העבודה, אימות CI מלא לאחר הסנכרון מתבצע ב-PR #4).
+> כלל: כל שלב מתועד עם מה נעשה, ראיות ובדיקות. עדכון אחרון: 10.11.2026 (S6.4 — תיקון אובדן כותרת H5 ושכפול H6; C1–C12 בקורפוס הארוך 12/12; CI מלא על commit 78a253 עבר; הייבואים הארכיוניים ומפת ההטמעה עודכנו).
+
+> **הוראת משתמש מחייבת מ־10.11.2026:** P6/P7 הושעו לחלוטין. אין להריץ, לחשב, להציג, לנתח או להשתמש בהם; אין התאמת פסקאות, מילים או שורות ל־PDF היסטורי. כל אזכור/תוצאה ישנים בהמשך היומן הם תיעוד היסטורי בלבד, לא מצב פעיל ולא משימה. אין לחלץ מהם נתונים חדשים או להמשיך לעסוק בהם.
 
 
 ## S4.27 (05.11 — דיווח משתמש "הרבה בעיות שבחינה מדוקדקת של הקוד היתה מגלה": עטיפת שורות בדפדפן)
@@ -2835,3 +2837,49 @@ CI על HEAD `53834bc` אישר `s52-dp-fixes` ‏23/23 ו-`s52-ui-fixes` ‏18/
 - נקודת הכניסה של `extract-reference.py` נחסמה בקוד יציאה 2 כדי שלא ניתן יהיה לייצר חילוץ/JSON היסטורי חדש בטעות.
 - `verify-corpus.py` תיעד במפורש שהוא מייבא רק פונקציות עזר טהורות לצורך בדיקת PDF של RED מול מקור הקלט; אין הפעלת comparator ואין P6/P7.
 - לא שונו חישובי C1–C12, ה-parser, ה-DP, ה-Worker או ה-renderer. נשמרה תלות העזר הקיימת כדי לא ליצור רגרסיה בבדיקת הקורפוס.
+
+
+## Session 9 — השלמת מפת הייבוא, סוויטת IMUD ו-audit gap (10.11.2026)
+
+### 1. אימות CI על הקוד הפעיל
+
+ה-commit `78a253191e586484f203695149fba2b29925f461` עבר את ארבעת ה-workflows הבאים:
+
+| Workflow | Run ID | תוצאה וראיות |
+|---|---:|---|
+| CI | 42860938151 | success; layout-audit smoke + largest valid corpus; Node 18/20/22; 670 tests / 33 files + scan-control triggers; determinism success |
+| layout-invariants | 42860938648 | success; D-100 negative control, largest valid corpus, RED live path, C1–C12 ויצוא HTML/PDF |
+| rebuild-worker-bundles | 42860938317 | success; rebuild/commit synchronization ו-D-65 determinism |
+| full-math-audit | 42860938175 | local success; live job skipped לפי תנאי ה-workflow |
+
+לאחר commit זה נוספו מסמכי תכנון וקובצי archive בלבד; לא שונו `red-build/src/**`, `red-build/ui/**`, workflows או בדיקות פעילות. לא נדרשה הרצת full-corpus חוזרת עבור פעולות התיעוד/ארכיון.
+
+### 2. השלמת ארכיון המקורות
+
+- ארכיון המקורות כולל כעת 75 קבצים + README תחת `reference-archive/cross-repo-2026-11-10/`.
+- האינדקס `README.md` מפרט source ref, commit, original path ו-Git blob לכל קובץ. כל קובץ הועתק byte-for-byte וה-blob אומת מול מקורו.
+- נוספה סוויטת layout היסטורית של IMUD: 8 קבצים הכוללים scenario generator, baseline, runner, checker, browser helper ושני קובצי קלט. הסוויטה נשמרה בארכיון בלבד ולא הורצה.
+- baseline ה-IMUD שבמקור מכיל 38 שמות תרחיש. README המקור אומר 21; הסתירה תועדה. אין להשתמש ב-page counts/violation counts של baseline כציפיות RED.
+- FWD-4 הוא פריט אחר: הקורפוס הארוך המקורי בן 5,702 השורות כבר יובא ל-fixture פעיל ונבדק; אין לבלבל בינו לבין סוויטת layout ההיסטורית.
+
+### 3. מסמכי הייבוא וה-provenance
+
+- `spec/CROSS_REPOSITORY_IMPORT_PLAN.md` עודכן בסטטוסי ההטמעה בפועל: מה קיים, מה הועבר, מה ארכיוני ומה מחייב adapter.
+- `PROVENANCE.md` עודכן: 75 קובצי archive, סוויטת IMUD 38 scenario baseline, מצב Makom Bina בפועל והגבולות של כל ההעברות.
+- `reference-archive/.../README.md` עודכן עם אינדקס IMUD הנוסף וספירה מדויקת של 75 קובצי מקור.
+
+### 4. Step-by-step audit
+
+- `spec/STEP_BY_STEP_AUDIT_GAP_ANALYSIS.md` מגדיר את הפער היחיד שנותר ביחס לשיטות Gold/Orange/Yellow: אין עדיין snapshots/deltas מלאים של כל רכיבי העמוד והאחים בחלון issue-centric.
+- RED כבר מחזיק EventLog, Ledger עם 10 מצבי lifecycle, candidate/capacity/rollback evidence, diagnostics-v2 ו-Testing UI. אין הצדקה להקים logger/trace שני.
+- תכנית המימוש מתחילה ב-reducer טהור על מודל RED; רק אחר כך instrumentation opt-in לעמודים שנפגעו. לא מוסיפים DOM measurement או snapshot כבד במסלול רגיל.
+
+### 5. Makom Bina v20.5 — פער UI שנשאר
+
+- ארבעת JSONs נמצאים ב-`red-build/ui/assets/imud/presets/makom-bina-v20.5/`, עם 249 מפתחות בכל קובץ.
+- ה-loader הפעיל עדיין טוען רק את שלוש ערכות הסגנון הרגילות מתוך `assets/imud/setting_sets/`; נתוני Makom Bina אינם נגישים כרגע בבורר.
+- השלב הבא הוא קבוצת preset נפרדת עם מקור/גרסה, preview והחלה מפורשת. אין שינוי default ואין החלפת הקבצים הרגילים.
+
+### 6. P6/P7
+
+ההשעיה המלאה נותרת בתוקף. אין ליצור, להפעיל או להציג מדדים/בדיקות/משימות אלה. אין התאמת פסקאות, מילים או שורות. האזכורים ההיסטוריים ביומן נשארים רק כרשומה לא-פעילה ואינם הנחיות.
