@@ -1,23 +1,8 @@
-name: layout-parity
+name: layout-invariants
 
-# השוואה היסטורית (Legacy Diagnostic) מול PDF ישן — לא מפרט תוצאה סופית (D-98, 10.11.2026).
-#
-# קובצי ה-PDF ב-audits הועלו בשלב מוקדם להמחשת יחסי אזורים, סוגי פריסות ושערים.
-# הם אינם מושלמים ואינם יעד חיקוי. extract-reference.py מחלץ מהם נתונים
-# ל-audits/layout-reference.json לצורך השוואה היסטורית בלבד. אין לפרש ציון
-# P1-P9 כהערכת איכות RED או להשתמש בו כהוראת תיקון מנוע:
-#
-#   HARD   — שימור תוכן, אפס חפיפות וגבולות עמוד.
-#   H4 ו-C4-C8 הם מדדי יישור/עמודונים/סדר עמודים/TOC/כותרות תלויי-הגדרות; מידע בלבד כברירת מחדל.
-#   LEGACY — דמיון ל-PDF הישן: נתון דיאגנוסטי בלבד. שינוי מכוון ב-RED יכול
-#             להוריד את הציון בלי להיות רגרסיה.
-#
-# הציון אינו אמת מידה לאיכות ואינו תנאי קבלה. קודי יציאה: 0 ללא פער;
-# 1 כשל HARD; 2 פער Legacy; 3 שניהם. רק HARD והקורפוס נבחנים כשערי נכונות,
-# וגם כל בדיקת HARD חייבת להיות מוצדקת כאינווריאנט עצמאי.
-#
-# הערה: הייחוס נבדק לדטרמיניזם — ריצה מחדש של החילוץ חייבת לתת קובץ זהה
-# בתת-ספרה (git diff) — אחרת ההשוואה אינה תקפה.
+# בדיקות נכונות עצמאיות ל-RED: מסלול חי, בדיקות גיאומטריה וקורפוס גדול.
+# P6/P7 וההשוואה ל-PDF ההיסטורי הוקפאו לחלוטין לפי הוראת המשתמש (10.11.2026).
+# לכן אין חילוץ PDF, אין compare.py ואין יצירת score/דוח legacy ב-workflow זה.
 
 on:
   push:
@@ -43,66 +28,17 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install PyMuPDF (חילוץ גיאומטריה מ-PDF)
-        run: pip install pymupdf==1.26.7
-
-      - name: Verify the historical sample extraction is deterministic (committed JSON == PDFs)
-        run: |
-          python3 tools/layout-parity/extract-reference.py
-          git diff --exit-code -- audits/layout-reference.json || {
-            echo "✗ audits/layout-reference.json אינו תואם לחילוץ מקובצי ה-PDF — הרץ extract-reference.py והחלף ב-commit"; exit 1; }
 
       - name: Run RED through the live path (IMUD defaults + real font → model + PDF)
         run: node tools/layout-parity/run-ours.js
 
-      - name: Legacy comparison diagnostic against the historical PDF
-        run: |
-          set +e
-          python3 tools/layout-parity/compare.py \
-            audits/layout-reference.json \
-            audits/layout-parity-artifacts/ours-model.json \
-            audits/layout-parity-artifacts/ours.pdf \
-            audits/layout-parity-artifacts/parity-report.json
-          ec=$?
-          set -e
-          # קודי יציאה של compare.py: 0 ללא פער | 1 כשל HARD | 2 פערי Legacy | 3 שניהם.
-          # כשלי HARD נבדקים כשער נכונות; פערי Legacy הם תצפיות מול PDF ישן בלבד.
-          # פער Legacy אינו הוכחה לתקלה ואינו יעד תיקון. הדוח נשמר כ-artifact.
-          if [ "$ec" -eq 1 ] || [ "$ec" -eq 3 ]; then
-            echo "✗ HARD invariants FAILED (exit $ec) — כשל נכונות אמיתי"; exit 1
-          fi
-          if [ "$ec" -eq 2 ]; then
-            score=$(python3 -c "import json;print(json.load(open('audits/layout-parity-artifacts/parity-report.json'))['summary']['score'])")
-            echo "ℹ Legacy comparison differences — similarity: ${score}% (diagnostic only; full report in artifact)"
-          fi
 
-      # D-98: ציון Legacy נשמר כנתון להשוואה בלבד. אין רצפת ציון חוסמת:
-      # שינוי מכוון שמתאים את RED למפרט החדש עשוי להתרחק מה-PDF ההיסטורי.
-      - name: Legacy reference score — informational only (D-98)
-        if: always()
-        run: |
-          python3 - <<'EOF'
-          import json, os
-          p = 'audits/layout-parity-artifacts/parity-report.json'
-          if not os.path.exists(p):
-              print('Legacy comparison report unavailable; see preceding step.')
-          else:
-              r = json.load(open(p, encoding='utf-8'))
-              s = r.get('summary', {})
-              print('Legacy reference similarity (not an acceptance score):',
-                    s.get('score'), '%')
-              for c in r.get('checks', []):
-                  if c.get('layer') == 'PARITY' and not c.get('pass'):
-                      print('LEGACY DIFFERENCE:', c.get('id'), c.get('name'))
-          EOF
-
-      - name: Always upload the full report + our PDF
+      - name: Always upload the independent RED model + PDF
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: layout-parity-report
+          name: layout-invariants-report
           path: |
-            audits/layout-parity-artifacts/parity-report.json
             audits/layout-parity-artifacts/ours-model.json
             audits/layout-parity-artifacts/ours.pdf
           if-no-files-found: warn
@@ -142,7 +78,7 @@ jobs:
       - name: Run RED on the largest valid corpus (live path + deterministic double-run + HTML)
         run: node tools/layout-parity/run-ours.js audits/long_test_text.txt audits/very-long-artifacts --determinism --html
 
-      - name: Corpus invariants + informational alignment metric (C1..C12 — כולל ייצוא HTML)
+      - name: Independent corpus invariants (C1..C12 — כולל ייצוא HTML)
         run: |
           python3 tools/layout-parity/verify-corpus.py \
             audits/long_test_text.txt \
