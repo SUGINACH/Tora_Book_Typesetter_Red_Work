@@ -22,6 +22,7 @@ const inlineTransport = require('../../src/ui/inline-transport');
 const { WorkerEngineClient, workerTransport, RESTART_ERROR, WORKER_ERROR_PREFIX } = require('../../src/ui/worker-client');
 const { buildPreviewTab, parseHebrewNumber } = require('../../src/ui/preview-tab');
 const { createImudLibrary } = require('../../src/ui/imud-library');
+const { buildSettingsTab } = require('../../src/ui/settings-panel');
 
 // ================= DOM shim (העתק מדויק של s10-ui.test.js — אותה הגדרה) =================
 function makeDoc() {
@@ -600,3 +601,110 @@ describe('S5.2 (10) + (9) — ספריית IMUD: מטמון בטיסה, restart,
 function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 report('s52-ui-fixes');
+
+
+// =====================================================================
+describe('Makom Bina v20.5 — preset מבודד ב-IMUD UI', () => {
+  const ASSETS = path.join(__dirname, '..', '..', 'ui', 'assets', 'imud');
+  const PRESET = path.join(ASSETS, 'presets', 'makom-bina-v20.5');
+  const PRESET_ID = 'makom-bina-v20.5';
+
+  function withPresetFetch() {
+    const original = global.fetch;
+    const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
+    global.fetch = async (url) => {
+      const p = String(url);
+      if (p.endsWith('/imud-fonts.json')) return { ok: true, json: async () => readJson(path.join(ASSETS, 'imud-fonts.json')) };
+      if (p.endsWith('/fonts-extended.json')) return { ok: true, json: async () => [] };
+      if (p.endsWith('/presets/makom-bina-v20.5/default_settings.json')) {
+        return { ok: true, json: async () => readJson(path.join(PRESET, 'default_settings.json')) };
+      }
+      for (const name of ['תלמוד', 'פרשנות', 'קונטרס']) {
+        if (p.endsWith('/presets/makom-bina-v20.5/setting_sets/' + encodeURIComponent(name) + '.json')) {
+          return { ok: true, json: async () => readJson(path.join(PRESET, 'setting_sets', name + '.json')) };
+        }
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
+    };
+    return () => { global.fetch = original; };
+  }
+
+  it('ה-loader טוען רק את ארבעת קובצי v20.5 דרך אותו import/disposition', async () => {
+    const restore = withPresetFetch();
+    try {
+      const lib = createImudLibrary({
+        registerFont: () => Promise.resolve(),
+        registerAssets: () => Promise.resolve({}),
+        requestExport: () => Promise.resolve({ bytes: new Uint8Array(1) })
+      });
+      const groups = lib.listSettingPresets();
+      assertEq(groups.length, 1, 'קבוצת preset אחת ומפורשת');
+      assertEq(groups[0].id, PRESET_ID);
+      assertEq(groups[0].source, 'IMUD_TORANI');
+      assertEq(groups[0].version, '20.5');
+      assertEq(groups[0].sets.map(x => x.id), ['default', 'תלמוד', 'פרשנות', 'קונטרס']);
+
+      for (const setId of ['default', 'תלמוד', 'פרשנות', 'קונטרס']) {
+        const result = await lib.loadSettingPreset(PRESET_ID, setId);
+        const rawPath = setId === 'default'
+          ? path.join(PRESET, 'default_settings.json')
+          : path.join(PRESET, 'setting_sets', setId + '.json');
+        const raw = JSON.parse(fs.readFileSync(rawPath, 'utf8'));
+        assertEq(Object.keys(raw).length, 249, setId + ': קובץ מקור מלא');
+        assertEq(result.presetLabel, 'מקום בינה v20.5');
+        assertEq(result.setId, setId);
+        assertEq(result.unmapped, [], setId + ': אין מפתחות ללא disposition');
+        assertEq(result.report.mapped + result.report.merged + result.report.uiState + result.report.removed,
+          249, setId + ': כל מפתחות המקור קיבלו disposition');
+        assert(result.settings && typeof result.settings === 'object', setId + ': הגדרות מיובאות');
+      }
+      assert.throws(() => lib.loadSettingPreset('unknown', 'default'), /preset לא מוכר/);
+      assert.throws(() => lib.loadSettingPreset(PRESET_ID, '../default_settings'), /ערכה לא מוכרת/);
+    } finally { restore(); }
+  });
+
+  it('הבורר מציג את מקור/גרסה/ארבע האפשרויות ומחיל רק אחרי בחירה מפורשת', async () => {
+    let applied = null, notice = '';
+    const group = {
+      id: PRESET_ID, label: 'מקום בינה v20.5', source: 'IMUD_TORANI', version: '20.5',
+      sets: [
+        { id: 'default', label: 'ברירות מחדל מלאות' },
+        { id: 'תלמוד', label: 'תלמוד' },
+        { id: 'פרשנות', label: 'פרשנות' },
+        { id: 'קונטרס', label: 'קונטרס' }
+      ]
+    };
+    const library = {
+      listSettingSets: () => ['תלמוד', 'פרשנות', 'קונטרס'],
+      listSettingPresets: () => [group],
+      listDesigns: async () => [],
+      loadSettingPreset: async (presetId, setId) => ({
+        presetId, presetLabel: group.label, setId,
+        setLabel: group.sets.find(x => x.id === setId).label,
+        settings: { 'heading-0-size-pt': 22 },
+        report: { mapped: 200, uiState: 49 }
+      })
+    };
+    const panel = buildSettingsTab(makeDoc(), {
+      getSettings: () => getDefaultSettings(),
+      onSettingChanged: () => {},
+      onResetField: () => {},
+      imudLibrary: library,
+      onApplyLegacyDefaults: (settings) => { applied = settings; },
+      onNotice: (message) => { notice = message; }
+    });
+    await settle(30);
+    const picker = panel.root.querySelectorAll('select')
+      .find(el => el.getAttribute('aria-label') === 'בחירת preset נוסף מהמקור');
+    assert(picker, 'בורר preset נפרד קיים');
+    assertEq(picker.children.length, 5, 'אפשרות ריקה + ארבע אפשרויות preset');
+    assert(picker.children[1].textContent.includes('מקום בינה v20.5'), 'שם וגרסת preset מוצגים');
+    assertEq(applied, null, 'ה-preset אינו מוחל אוטומטית');
+    picker.value = PRESET_ID + '::תלמוד';
+    fire(picker, 'change');
+    await settle(30);
+    assertEq(applied, { 'heading-0-size-pt': 22 }, 'בחירה מפורשת מעבירה את ההגדרות למסלול ההחלה הקיים');
+    assert(notice.includes('מקום בינה v20.5') && notice.includes('ברירות המחדל הרגילות לא שונו'),
+      'הודעה מציינת את המקור ואת ההפרדה מברירות המחדל');
+  });
+});
