@@ -206,7 +206,7 @@ def main():
           missingWords=sum(missing.values()), missingSample=list(missing)[:8],
           extraWords=sum(extra.values()), extraSample=list(extra)[:8])
 
-    # ============ C2-C4, C11: אינווריאנטים גיאומטריים ב-PDF ============
+    # ============ C2-C3, C11: אינווריאנטים גיאומטריים; C4: מדד איכות ============
     doc = fitz.open(pdf_path)
     overlaps, oob = [], []
     justify_ratios = []
@@ -605,11 +605,14 @@ def main():
               count=len(html_bad), sample=html_bad[:5])
 
     # ============ סיכום ============
-    total = len(C.rows)
-    passed = total - len(C.failures())
-    score = round(100 * passed / total, 1)
+    # C4 is informational unless an explicitly approved --justify-floor was supplied.
+    gated_rows = [row for row in C.rows if row["ok"] is not None]
+    informational_rows = [row for row in C.rows if row["ok"] is None]
+    total = len(gated_rows)
+    passed = sum(1 for row in gated_rows if row["ok"] is True)
+    score = round(100 * passed / total, 1) if total else 100.0
     print("─" * 66)
-    print(f"  עוברות: {passed}/{total}  |  ציון קורפוס: {score}%")
+    print(f"  שערים שעברו: {passed}/{total}  |  ציון אינווריאנטים: {score}%  |  מדדים מידעיים: {len(informational_rows)}")
     report = {
         "corpus": os.path.relpath(src_path, ROOT),
         "model": os.path.relpath(model_path, ROOT),
@@ -621,6 +624,7 @@ def main():
         "sourceWords": sum(src_words.values()),
         "justifyMeanRatio": round(mean_just, 4),
         "checks": C.rows,
+        "informationalChecks": len(informational_rows),
         "passed": passed, "total": total, "score": score,
         "verdict": "PASS" if not C.failures() else "FAIL",
     }
