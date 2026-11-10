@@ -370,6 +370,37 @@ function buildImudPicker(doc, opts) {
   setsWrap.appendChild(setsSel);
   wrap.appendChild(setsWrap);
 
+  // Preset נפרד ממקום בינה v20.5. אינו מחליף את שלוש ערכות המקור הרגילות.
+  // החלה מתבצעת רק לאחר בחירה מפורשת, דרך אותו מסלול applyLegacyDefaults.
+  const presetWrap = doc.createElement('div');
+  presetWrap.className = 'row';
+  const presetLbl = doc.createElement('label');
+  presetLbl.textContent = 'ערכת preset נוספת (מקור IMUD):';
+  presetWrap.appendChild(presetLbl);
+  const presetSel = doc.createElement('select');
+  presetSel.className = 'ctl';
+  presetSel.setAttribute('aria-label', 'בחירת preset נוסף מהמקור');
+  presetSel.appendChild(Object.assign(doc.createElement('option'), { textContent: '— בחר preset —', value: '' }));
+  presetSel.addEventListener('change', async () => {
+    const choice = presetSel.value;
+    if (!choice) return;
+    const sep = choice.indexOf('::');
+    const presetId = sep >= 0 ? choice.slice(0, sep) : '';
+    const setId = sep >= 0 ? choice.slice(sep + 2) : '';
+    try {
+      const result = await opts.imudLibrary.loadSettingPreset(presetId, setId);
+      if (opts.onApplyLegacyDefaults) opts.onApplyLegacyDefaults(result.settings);
+      if (opts.onNotice) opts.onNotice(
+        `הוחל ${result.presetLabel} — ${result.setLabel}: ${result.report.mapped} הגדרות מופו, ${result.report.uiState} ערכי UI נשמרו. ברירות המחדל הרגילות לא שונו.`
+      );
+    } catch (e) {
+      presetSel.value = '';
+      if (opts.onNotice) opts.onNotice('טעינת ה-preset נכשלה: ' + (e && e.message ? e.message : e));
+    }
+  });
+  presetWrap.appendChild(presetSel);
+  wrap.appendChild(presetWrap);
+
   // כפתור ברירות המחדל המקוריות — ייבוא 264 המפתחות דרך טבלת ה-disposition
   const defaultsBtn = doc.createElement('button');
   defaultsBtn.type = 'button'; defaultsBtn.className = 'btn';
@@ -393,12 +424,22 @@ function buildImudPicker(doc, opts) {
   (async () => {
     try {
       const settingsNow = opts.getSettings ? opts.getSettings() : {};
-      // ערכות סגנון-ספר (setting_sets) — אוכלוס הבורר
+      // ערכות סגנון-ספר רגילות — נשארות בקבוצה המקורית.
       try {
         for (const name of opts.imudLibrary.listSettingSets()) {
           setsSel.appendChild(Object.assign(doc.createElement('option'), { textContent: name, value: name }));
         }
       } catch (e) { /* אין ספריית ערכות — הבורר נשאר עם ברירת המחדל */ }
+      // קבוצות preset מבודדות — מוצגות עם מקור/גרסה/שם, נטענות רק לאחר בחירה.
+      try {
+        for (const preset of opts.imudLibrary.listSettingPresets()) {
+          for (const set of preset.sets) {
+            const value = `${preset.id}::${set.id}`;
+            const label = `${preset.label} — ${set.label}`;
+            presetSel.appendChild(Object.assign(doc.createElement('option'), { textContent: label, value }));
+          }
+        }
+      } catch (e) { /* ספריות ללא presets נוספים — הבורר נשאר ריק */ }
       const byCollection = new Map();
       for (const { pick, sel } of selects) {
         if (!byCollection.has(pick.collection)) {
