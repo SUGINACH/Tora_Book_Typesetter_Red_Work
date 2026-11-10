@@ -44,7 +44,7 @@ Manual or targeted commands (only after confirming required runtime dependencies
 - `cd red-build && npm run test:canonical`
 - `cd red-build && npm run audit:layout`
 - `node tools/layout-parity/run-ours.js` with the exact options documented in `tools/layout-parity/README.md`.
-- The exact full-math command is taken from `tools/layout-audit/README`/workflow, not reconstructed by guesswork.
+- The exact full-math command is taken from `.github/workflows/full-math-audit.yml` and `tools/layout-audit/run-full-math.js` / `run.sh`, not reconstructed by guesswork.
 
 ## Run ledger
 
