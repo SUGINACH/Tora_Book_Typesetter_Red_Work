@@ -29,6 +29,8 @@ differ. Existing regular settings were not overwritten.
 ## Activation boundary
 
 No runtime code, settings registry, default selection, migration rule, or layout
-pipeline was changed by this import. The directory is not auto-loaded and does
-not become an active preset until a separate UI/settings integration is reviewed.
-This preserves the source data without changing the current engine behavior.
+pipeline was changed by this import. The preset is registered in `imud-library.js`
+and exposed in `settings-panel.js` as an explicit preview/apply choice. Selecting
+a set loads its data for preview only; active settings change only after the user
+clicks the separate apply button. The preset is not loaded automatically at startup
+and does not replace the regular IMUD setting sets or global defaults.
