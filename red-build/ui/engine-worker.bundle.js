@@ -7686,8 +7686,15 @@ function legacyTypeset(rawText, settings, env) {
             if (block.fill === 0 && !isH0 && !(block.cols[0].length === 0)) {
               // **S4.13:** גם כאן המקור מחזיר כותרות זנב לפני מעבר טור —
               // כותרת שנותרה אחרונה בטור הימני תיפלט עם הפסקה הבאה בשמאלי.
-              ti -= rollbackTrailingHeadings();
+              const rolledBack = rollbackTrailingHeadings();
+              ti -= rolledBack;
               block.fill = 1; // המשך בטור השמאלי
+              // **S6.4 (נסיגת כותרות — שמירת סדר הטוקנים):** כאשר הכותרות
+              // שבסוף הטור הוחזרו, אסור להמשיך באותה איטרציה עם tok הישן.
+              // יש להתחיל מחדש מהטוקן הראשון שהוחזר, להציבו בטור השמאלי,
+              // ורק לאחריו לעבד את הכותרת הנוכחית. אחרת הכותרת שהוחזרה
+              // נעלמת והכותרת הבאה מוצבת פעמיים.
+              if (rolledBack > 0) continue fillPage;
             } else if (block.cols[block.fill].length || block.cols[0].length) {
               // **S4.13:** סיום הבלוק לפני שבירת העמוד — כמו המקור (כל בלוק
               // מסתיים בהיגיון הארבעה; כאן הטוקן הבא הוא הכותרת שלא נכנסה).
