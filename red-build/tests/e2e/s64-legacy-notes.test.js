@@ -234,4 +234,21 @@ describe('Session 05 — Legacy/IMUD note-path content and placement', () => {
   });
 });
 
+
+describe('Session 05 — IMUD raw reset compatibility', () => {
+  it('falls back to legacy fn-reset-mode only when normalized RED setting is absent', () => {
+    const doc = buildScopeDoc();
+    const settings = legacySettings();
+    delete settings['footnote-reset-policy'];
+    settings._imudRaw = {
+      ...(settings._imudRaw || {}),
+      'fn-reset-mode': 'siman'
+    };
+    const result = legacyTypeset(doc, settings, {});
+    assertEq(result.contentPreserved, true, 'legacy raw fallback preserves content');
+    assertEq(firstMarkersCount(result), 3,
+      'legacy fn-reset-mode=siman maps to section reset when normalized RED key is absent');
+  });
+});
+
 report();
