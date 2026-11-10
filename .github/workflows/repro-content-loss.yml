@@ -22,7 +22,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Reproduce fixed-document content loss in the Legacy/IMUD path
+      - name: Trace the missing fixed-document heading in the Legacy/IMUD path
+        env:
+          RED_TRACE_HEADING_ID: '817'
+          RED_DEBUG_BLOCKS: '1'
         run: node execution/repro/content-loss-two-words.js
       - name: Upload exact input and diagnostic report
         if: always()
