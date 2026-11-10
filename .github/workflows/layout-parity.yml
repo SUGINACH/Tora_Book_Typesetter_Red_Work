@@ -45,7 +45,7 @@ jobs:
       - name: Install PyMuPDF (חילוץ גיאומטריה מ-PDF)
         run: pip install pymupdf==1.26.7
 
-      - name: Verify reference extraction is deterministic (committed JSON == PDFs)
+      - name: Verify the historical sample extraction is deterministic (committed JSON == PDFs)
         run: |
           python3 tools/layout-parity/extract-reference.py
           git diff --exit-code -- audits/layout-reference.json || {
