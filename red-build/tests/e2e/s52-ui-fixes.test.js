@@ -667,7 +667,7 @@ describe('Makom Bina v20.5 — preset מבודד ב-IMUD UI', () => {
     } finally { restore(); }
   });
 
-  it('הבורר מציג את מקור/גרסה/ארבע האפשרויות ומחיל רק אחרי בחירה מפורשת', async () => {
+  it('הבורר מציג preview של מקור/גרסה ומחייב לחיצת Apply נפרדת', async () => {
     let applied = null, notice = '';
     const group = {
       id: PRESET_ID, label: 'מקום בינה v20.5', source: 'IMUD_TORANI', version: '20.5',
@@ -683,10 +683,11 @@ describe('Makom Bina v20.5 — preset מבודד ב-IMUD UI', () => {
       listSettingPresets: () => [group],
       listDesigns: async () => [],
       loadSettingPreset: async (presetId, setId) => ({
-        presetId, presetLabel: group.label, setId,
+        presetId, presetLabel: group.label, source: group.source, version: group.version, setId,
         setLabel: group.sets.find(x => x.id === setId).label,
         settings: { 'heading-0-size-pt': 22 },
-        report: { mapped: 200, uiState: 49 }
+        unmapped: [],
+        report: { mapped: 200, merged: 0, uiState: 49, removed: 0 }
       })
     };
     const panel = buildSettingsTab(makeDoc(), {
@@ -703,12 +704,29 @@ describe('Makom Bina v20.5 — preset מבודד ב-IMUD UI', () => {
     assert(picker, 'בורר preset נפרד קיים');
     assertEq(picker.children.length, 5, 'אפשרות ריקה + ארבע אפשרויות preset');
     assert(picker.children[1].textContent.includes('מקום בינה v20.5'), 'שם וגרסת preset מוצגים');
+    const apply = panel.root.querySelectorAll('button')
+      .find(el => el.getAttribute('aria-label') === 'החלת ערכת preset לאחר תצוגה מקדימה');
+    assert(apply, 'לחצן Apply נפרד קיים');
+    assert(apply.disabled, 'לחצן Apply נעול לפני בחירה');
     assertEq(applied, null, 'ה-preset אינו מוחל אוטומטית');
+
     picker.value = PRESET_ID + '::תלמוד';
     fire(picker, 'change');
     await settle(30);
-    assertEq(applied, { 'heading-0-size-pt': 22 }, 'בחירה מפורשת מעבירה את ההגדרות למסלול ההחלה הקיים');
+    const preview = panel.root.querySelectorAll('[role="status"]')
+      .find(el => String(el.textContent).includes('תצוגה מקדימה:'));
+    assert(preview, 'תצוגה מקדימה מוצגת');
+    assert(preview.textContent.includes('IMUD_TORANI') && preview.textContent.includes('20.5'),
+      'ה-preview מציג מקור וגרסה');
+    assert(preview.textContent.includes('200 הגדרות ימופו'),
+      'ה-preview מציג פירוט מיפוי');
+    assertEq(applied, null, 'טעינת preview בלבד אינה משנה הגדרות פעילות');
+    assert(!apply.disabled, 'Apply מופעל לאחר preview תקין');
+
+    fire(apply, 'click');
+    await settle(30);
+    assertEq(applied, { 'heading-0-size-pt': 22 }, 'החלה מתבצעת רק בלחיצה נפרדת');
     assert(notice.includes('מקום בינה v20.5') && notice.includes('ברירות המחדל הרגילות לא שונו'),
-      'הודעה מציינת את המקור ואת ההפרדה מברירות המחדל');
+      'הודעת ההחלה מציינת את המקור ואת ההפרדה מברירות המחדל');
   });
 });
