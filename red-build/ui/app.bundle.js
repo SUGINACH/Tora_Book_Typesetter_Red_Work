@@ -2023,6 +2023,34 @@ function chapterTitle(rng, idx) {
  * בלוק כותרת-משנה (ציר 3) — טקסט כותרת מגוון.
  * @param {number} level 3..7
  */
+/** Ensure synthetic heading-only runs are completed before a same/shallower heading or chapter end. */
+function ensureGeneratedHeadingRunsHaveBody(lines, rng) {
+  const tokens = tokenize(lines);
+  const out = [];
+  let pendingLevel = null;
+
+  for (const token of tokens) {
+    if (token.type === 'heading') {
+      if (pendingLevel != null && Number(token.level) <= pendingLevel) {
+        out.push(paragraphText(rng, randInt(rng, 5, 9)) + '.');
+        pendingLevel = null;
+      }
+      out.push(token.raw || ('כותרת ' + token.level + ' - ' + token.text));
+      pendingLevel = Number(token.level);
+      continue;
+    }
+
+    out.push(token.raw || token.text || '');
+    if (token.type === 'paragraph' && Array.isArray(token.parts) &&
+        token.parts.some(part => part.kind === 'text' && /[\\p{L}\\p{N}]/u.test(part.value))) {
+      pendingLevel = null;
+    }
+  }
+
+  if (pendingLevel != null) out.push(paragraphText(rng, randInt(rng, 5, 9)) + '.');
+  return out;
+}
+
 function subHeadingText(rng, level) {
   const h3 = ['כללים והגדרות', 'מחלוקת הראשונים', 'שיטת הרמב"ם', 'דעת השולחן ערוך', 'ביאור הסוגיה', 'השלכות מעשיות'];
   const h456 = ['טעם הדין', 'גדרי הדין', 'מקור הדין', 'חילוקי דינים', 'דין נוסף', 'לשון הפוסקים', 'שאלה נפרדת', 'ראיה מהגמרא'];
@@ -2112,6 +2140,11 @@ function chapterLines(rng, opts, chapterIdx) {
     lines.push(bodyParagraph(rng, kind));
     blocksSinceHeading++;
   }
+
+  // Complete any trailing/invalid heading-only run with genuine generated prose.
+  const validLines = ensureGeneratedHeadingRunsHaveBody(lines, rng);
+  lines.length = 0;
+  lines.push(...validLines);
 
   // הערות סיום בחלק מהפרקים
   if (chance(rng, opts.compact ? 0.5 : 0.33)) {
