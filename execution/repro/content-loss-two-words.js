@@ -109,7 +109,7 @@ function main() {
   const sourceHeadings = sourceHeadingLines(documentText);
   const candidateTokens = (result.tokens || []).map((token, tokenIndex) => ({ token, tokenIndex }))
     .filter(({ token }) =>
-      /^(h4|h5|h6)$/.test(String(token.type)) && /לשון\\s+הפוסקים/.test(String(token.text || ''))
+      /^(h4|h5|h6)$/.test(String(token.type)) && /לשון\s+הפוסקים/.test(String(token.text || ''))
     ).map(({ token, tokenIndex }, occurrenceIndex) => {
       const tokenId = tokenNumericId(token);
       const refs = tokenId == null ? [] : outputRefsForToken(result.pages || [], tokenId);
@@ -124,7 +124,7 @@ function main() {
     });
 
   const missingCandidateTokens = candidateTokens.filter(token => token.outputRefCount === 0);
-  const documentLines = documentText.split(/\\r?\\n/);
+  const documentLines = documentText.split(/\r?\n/);
   const missingSourceContexts = missingCandidateTokens.map(token => ({
     tokenId: token.tokenId,
     tokenIndex: token.tokenIndex,
