@@ -12099,8 +12099,9 @@ function legacyTypeset(rawText, settings, env) {
   //     (FLOW_H − 38.5 − שורת-גוף) — ערך מפורש בהגדרה נחתם לטווח הבטוח.
   // (ב) מצב continuous כברירת מחדל ("הערה הבאה מתחילה מיד באותה שורה שהסתיימה
   //     הערה קודמת") — גם בו יש תקרה (בעבר היה אינסוף ⇒ חריגה מהעמוד).
-  // (ג) מספור פר-פרק ("איפוס מספרי הערות בכל פרק (כותרת 2) ולא בכל עמוד")
-  //     — fn-reset-mode=siman; page שומר על ההתנהגות ההיסטורית.
+  // (ג) footnote-reset-policy מנורמל: section (ברירת המחדל ההיסטורית) מאפס
+  //     ב-H2/H0; page מאפס בכל עמוד; part מאפס בכל H1; continuous אינו
+  //     מאפס בין מקטעים. הערך המנורמל ב-RED גובר על מפתח IMUD הגולמי.
   const FN_BODY_LINE_PX = SZ.body * (96 / 72) * 1.34; // 21.44 — שורת גוף אחת
   const FN_FULL_CAP_PX = Math.max(
     GEO.FN_PITCH,
@@ -12108,7 +12109,23 @@ function legacyTypeset(rawText, settings, env) {
   );
   const fnLayoutMode = String(fnSet('fn-layout-mode', 'continuous'));
   const fnPolicy = String(fnSet('long-footnote-policy', 'split'));
-  const fnResetMode = String(fnSet('fn-reset-mode', 'siman'));
+  // **S6.5 (R2-M4):** Legacy must consume the normalized RED setting first.
+  // Previously it always read _imudRaw.fn-reset-mode, so a user change to
+  // footnote-reset-policy was ignored and the UI setting became a no-op.
+  // Keep the old IMUD key as a compatibility fallback for direct legacy callers.
+  const rawFnReset = String(fnSet('fn-reset-mode', 'siman'));
+  const legacyFnReset = ({
+    siman: 'section',
+    chapter: 'section',
+    page: 'page',
+    continuous: 'continuous',
+    part: 'part'
+  })[rawFnReset] || 'section';
+  const fnResetMode = String(settings['footnote-reset-policy'] != null
+    ? settings['footnote-reset-policy'] : legacyFnReset);
+  if (!['page', 'section', 'part', 'continuous'].includes(fnResetMode)) {
+    throw new Error(`Invalid footnote-reset-policy for Legacy/IMUD: ${fnResetMode}`);
+  }
   const fnBarMaxRaw = Number(fnSet('fn-bar-max-height-px', 0));
   const fnBarMax = (Number.isFinite(fnBarMaxRaw) && fnBarMaxRaw > 0)
     ? Math.min(fnBarMaxRaw, FN_FULL_CAP_PX) : FN_FULL_CAP_PX;
@@ -12116,11 +12133,11 @@ function legacyTypeset(rawText, settings, env) {
   // **S4.24 (שימור תוכן):** המשכי הערות שנקצצו בתקרת המרזב — ברמת ה-typeset
   // (חוצה עמודים ומקטעים); לעולם לא מאבדים שורת הערה.
   const pendingFootnotes = [];
-  // **S4.26 (מספור פר-פרק):** מונה רץ בתוך הפרק; נשמר במפה כדי שהסמן בגוף
-  // והסמן ברישום יהיו זהים גם כשהפסקה חוצת-עמודים מציגה את ההערה שוב.
-  // איפוס בכל פתיחת מקטע h2/h0 (ראה flowSection).
+  // מונה/מפת מספרים משותפים למצבי section/part/continuous:
+  // section מאפסים ב-H2/H0, part ב-H1, continuous נשמר לאורך הספר.
+  // page אינו שומר מספר יציב במפה — המספר נגזר ממיקום ההערה בתור העמוד.
   let fnChapterCounter = 0;
-  const fnNoteNumbers = new Map(); // noteText -> מספר בפרק הנוכחי
+  const fnNoteNumbers = new Map(); // occurrence key (token#ordinal) -> מספר בתחום הנוכחי
   // **EXT-13:** גופן רשום ⇒ מדידת אמת גם ברירת מחדל 'table' (live==ייצוא).
   const impl = resolveMeasureImpl(settings);
   // **S4.13 (רישום גופן הערות-הצד):** הקריאה יכולה לספק את בתי הגופן
@@ -12427,10 +12444,10 @@ function legacyTypeset(rawText, settings, env) {
     let sectionFirst = true;
     const isH0 = sec.newPage && sec.newPage.level === 0;
     const isH2 = sec.newPage && sec.newPage.level === 2;
-    // **S4.26 (איפוס מספור פר-פרק):** כל פתיחת מקטע h2/h0 פותחת ספירה חדשה
-    // (דיווח משתמש: "איפוס מספרי הערות בכל פרק (כותרת 2) ולא בכל עמוד").
-    // מצב page שומר על המספור העמודי ההיסטורי; continuous אינו מאפס לעולם.
-    if ((isH0 || isH2) && fnResetMode === 'siman') {
+    // מדיניות איפוס לפי footnote-reset-policy:
+    // section — כל פתיחת H2/H0; part — כל שער-משנה H1 (ראה לולאת sections);
+    // continuous — אין איפוס; page — המספר נגזר מתור העמוד ואינו נשמר כאן.
+    if ((isH0 || isH2) && fnResetMode === 'section') {
       fnChapterCounter = 0;
       fnNoteNumbers.clear();
     }
@@ -12534,11 +12551,11 @@ function legacyTypeset(rawText, settings, env) {
           ? keyOf(q) === k
           : (q.text === text || q.srcText === text));
         if (idx < 0) {
-          // **S4.26 (מספור פר-פרק):** מספר יציב להערה בתוך הפרק — סמן הגוף
-          // וסמן הרישום זהים גם בהצגה חוזרת (פסקה חוצת-עמודים). מצב page
-          // ממשיך לגזור מקום בתור (התנהגות היסטורית).
+          // במסלולים section/part/continuous נשמר מספר יציב לפי מופע ההערה,
+          // כך שסמן הגוף והרישום נשארים זהים גם בהצגה חוזרת של פסקה חוצת-עמודים.
+          // page אינו שומר מספר יציב: המספר נגזר מתור ההערות של העמוד הנוכחי.
           let num = null;
-          if (fnResetMode === 'siman') {
+          if (fnResetMode !== 'page') {
             num = fnNoteNumbers.get(k);
             if (num == null) { fnChapterCounter++; num = fnChapterCounter; fnNoteNumbers.set(k, num); }
           }
@@ -12547,7 +12564,7 @@ function legacyTypeset(rawText, settings, env) {
         }
         const q = fnQueue[idx];
         const mkNum = (q && q.num != null) ? q.num
-          : (fnResetMode === 'siman' && fnNoteNumbers.has(k) ? fnNoteNumbers.get(k) : idx + 1);
+          : (fnResetMode !== 'page' && fnNoteNumbers.has(k) ? fnNoteNumbers.get(k) : idx + 1);
         // **EXT-17:** המפריד אחרי המספר — הגדרת המקור (note-num-separator).
         return LineBreaker.markerWord(mkNum, cfg.fnNumSeparator);
       };
@@ -13072,12 +13089,11 @@ function legacyTypeset(rawText, settings, env) {
         } else {
           tokPages.set(tok.id, new Set([pages.length - 1]));
           const r = brk.breakPara(tok.text, colW, bodySz, true, isH0Body ? prefaceApi : null,
-            // **S6.0 (F4):** מדידת סמן אמיתית — הסמן שיוקצה להערה ה-i של
-            // הפסקה במצב siman הוא fnChapterCounter+i+1 (כל ההערות הקודמות
-            // בפרק כבר ממוספרות בשלב זה; הפסקה ממודדת פעם אחת לפני הפליטה).
-            // במצב page המספר נגזר ממקום בתור בזמן תצוגה — אינו צפוי; נותרת
-            // ההתנהגות ההיסטורית ('א' בגודל הגוף).
-            fnResetMode === 'siman' ? {
+            // **S6.0 (F4):** מדידת סמן אמיתית — במצבים section/part/continuous
+            // המספר הצפוי להערה ה-i הוא fnChapterCounter+i+1; כל ההערות הקודמות
+            // בתחום כבר ממוספרות לפני הפליטה. במצב page המספר נגזר מתור העמוד,
+            // ולכן מדידת הסמן המוקדמת אינה חלה.
+            fnResetMode !== 'page' ? {
               markerOf: (i) => fnChapterCounter + i + 1,
               markerSizePt: cfg.fnListingNumSize,
               markerMeasure: (t, sz) => fnApi.measureTextWidth(t, sz, 0),
@@ -13726,6 +13742,11 @@ function legacyTypeset(rawText, settings, env) {
   for (const sec of sections) {
     if (sec.subShaar) {
       const t = sec.subShaar;
+      // **S6.5 (R2-M4):** part scope resets only at the H1/sub-shaar boundary.
+      if (fnResetMode === 'part') {
+        fnChapterCounter = 0;
+        fnNoteNumbers.clear();
+      }
       if (cfg.resetSimanOnH1) simanCounter = 0;
       const pg = newPage('shaar-sub');
       pg._secStartLevel = 1; // **EXT-15:** שער-משנה נפתח כמקטע h1
