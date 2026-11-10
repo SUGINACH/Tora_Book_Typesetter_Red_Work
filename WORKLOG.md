@@ -2890,3 +2890,8 @@ CI על HEAD `53834bc` אישר `s52-dp-fixes` ‏23/23 ו-`s52-ui-fixes` ‏18/
 בדיקת הקוד הראתה שה-UI וה-loader עבור `makom-bina-v20.5` כבר היו קיימים לפני ייבוא הנכסים: `imud-library.js` רושם preset מבודד, ו-`settings-panel.js` מציג preview ויישום מפורש בלחיצה. ארבעת קובצי הנתונים שהועברו ממלאים כעת את נתיבי הטעינה שהקוד כבר מצפה להם. לכן לא נוספה שכבת UI ולא שונה pipeline.
 
 נוספה `red-build/tests/integration/setting-presets.test.js` ונוספה לשרשרת `npm test`. הבדיקה מוודאת את רשימת ארבע האפשרויות, טעינה דרך `createImudLibrary.loadSettingPreset`, 249 מפתחות בכל קובץ, אפס unmapped, חשבונאות מלאה של כל מפתח, שימור `_imudRaw`, נתיבים מבודדים ודחיית מזהי preset/ערכה לא מוכרים. היא אינה קוראת ל-`typeset` ואינה משנה את המנוע. README ו-CROSS_REPOSITORY_IMPORT_PLAN עודכנו כדי לתאר את מצב ההפעלה הנוכחי במדויק.
+
+
+### Session 8 follow-up — תיקון בדיקת Makom Bina (10.11.2026)
+
+CI על commit `29f541e` הריץ את הסוויטה החדשה: שתי בדיקות עברו, ובדיקת טעינת ארבע הערכות נכשלה עם `profile is not defined`. בבדיקה התגלה שהביטוי `loaded.settings._layout-profile` נכתב בנקודה; JavaScript פירש אותו כחיסור וביקש משתנה בשם `profile`. זו טעות בתחביר הבדיקה בלבד, לא תקלה ב-loader ולא בקוד הייצור. תוקן ל-`loaded.settings['_layout-profile']` ב-commit `455d800`. נדרשת ריצת CI חוזרת כדי לאמת את כל ארבעת הקבצים ואת כל מטריצת Node.
