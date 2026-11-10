@@ -3518,6 +3518,37 @@ function buildImudPicker(doc, opts) {
   setsWrap.appendChild(setsSel);
   wrap.appendChild(setsWrap);
 
+  // Preset נפרד ממקום בינה v20.5. אינו מחליף את שלוש ערכות המקור הרגילות.
+  // החלה מתבצעת רק לאחר בחירה מפורשת, דרך אותו מסלול applyLegacyDefaults.
+  const presetWrap = doc.createElement('div');
+  presetWrap.className = 'row';
+  const presetLbl = doc.createElement('label');
+  presetLbl.textContent = 'ערכת preset נוספת (מקור IMUD):';
+  presetWrap.appendChild(presetLbl);
+  const presetSel = doc.createElement('select');
+  presetSel.className = 'ctl';
+  presetSel.setAttribute('aria-label', 'בחירת preset נוסף מהמקור');
+  presetSel.appendChild(Object.assign(doc.createElement('option'), { textContent: '— בחר preset —', value: '' }));
+  presetSel.addEventListener('change', async () => {
+    const choice = presetSel.value;
+    if (!choice) return;
+    const sep = choice.indexOf('::');
+    const presetId = sep >= 0 ? choice.slice(0, sep) : '';
+    const setId = sep >= 0 ? choice.slice(sep + 2) : '';
+    try {
+      const result = await opts.imudLibrary.loadSettingPreset(presetId, setId);
+      if (opts.onApplyLegacyDefaults) opts.onApplyLegacyDefaults(result.settings);
+      if (opts.onNotice) opts.onNotice(
+        `הוחל ${result.presetLabel} — ${result.setLabel}: ${result.report.mapped} הגדרות מופו, ${result.report.uiState} ערכי UI נשמרו. ברירות המחדל הרגילות לא שונו.`
+      );
+    } catch (e) {
+      presetSel.value = '';
+      if (opts.onNotice) opts.onNotice('טעינת ה-preset נכשלה: ' + (e && e.message ? e.message : e));
+    }
+  });
+  presetWrap.appendChild(presetSel);
+  wrap.appendChild(presetWrap);
+
   // כפתור ברירות המחדל המקוריות — ייבוא 264 המפתחות דרך טבלת ה-disposition
   const defaultsBtn = doc.createElement('button');
   defaultsBtn.type = 'button'; defaultsBtn.className = 'btn';
@@ -3541,12 +3572,22 @@ function buildImudPicker(doc, opts) {
   (async () => {
     try {
       const settingsNow = opts.getSettings ? opts.getSettings() : {};
-      // ערכות סגנון-ספר (setting_sets) — אוכלוס הבורר
+      // ערכות סגנון-ספר רגילות — נשארות בקבוצה המקורית.
       try {
         for (const name of opts.imudLibrary.listSettingSets()) {
           setsSel.appendChild(Object.assign(doc.createElement('option'), { textContent: name, value: name }));
         }
       } catch (e) { /* אין ספריית ערכות — הבורר נשאר עם ברירת המחדל */ }
+      // קבוצות preset מבודדות — מוצגות עם מקור/גרסה/שם, נטענות רק לאחר בחירה.
+      try {
+        for (const preset of opts.imudLibrary.listSettingPresets()) {
+          for (const set of preset.sets) {
+            const value = `${preset.id}::${set.id}`;
+            const label = `${preset.label} — ${set.label}`;
+            presetSel.appendChild(Object.assign(doc.createElement('option'), { textContent: label, value }));
+          }
+        }
+      } catch (e) { /* ספריות ללא presets נוספים — הבורר נשאר ריק */ }
       const byCollection = new Map();
       for (const { pick, sel } of selects) {
         if (!byCollection.has(pick.collection)) {
@@ -20515,6 +20556,45 @@ function createImudLibrary(engine) {
    * מיוחד; ההבדלים חייבים לשרוד את הייבוא (בדיקה מחייבת ב-setting-sets.test.js). */
   const SETTING_SETS = ['תלמוד', 'פרשנות', 'קונטרס'];
 
+  // Presets שמקורם בערכות נפרדות של IMUD נשארים מבודדים מה-setting_sets הרגיל.
+  // אין auto-load ואין שינוי של default_settings.json הכללי.
+  const SETTING_PRESETS = [
+    {
+      id: 'makom-bina-v20.5',
+      label: 'מקום בינה v20.5',
+      source: 'IMUD_TORANI',
+      version: '20.5',
+      sets: [
+        { id: 'default', label: 'ברירות מחדל מלאות' },
+        { id: 'תלמוד', label: 'תלמוד' },
+        { id: 'פרשנות', label: 'פרשנות' },
+        { id: 'קונטרס', label: 'קונטרס' }
+      ]
+    }
+  ];
+
+  /** רשימת קבוצות preset נוספות; מטא-נתונים בלבד, ללא טעינת קבצים. */
+  function listSettingPresets() {
+    return SETTING_PRESETS.map(p => ({ ...p, sets: p.sets.map(s => ({ ...s })) }));
+  }
+
+  /** טעינת ערכה מתוך preset מבודד. כל קובץ עובר אותה טבלת disposition של IMUD. */
+  async function loadSettingPreset(presetId, setId) {
+    const preset = SETTING_PRESETS.find(p => p.id === presetId);
+    if (!preset) throw new Error(`preset לא מוכר: ${presetId}`);
+    const set = preset.sets.find(s => s.id === setId);
+    if (!set) throw new Error(`ערכה לא מוכרת ב-${preset.label}: ${setId}`);
+    if (!fontCatalog.loaded) await loadFontCatalog().catch(() => {});
+    const file = set.id === 'default' ? 'default_settings.json' : `setting_sets/${encodeURIComponent(set.id)}.json`;
+    const legacy = await fetchJson(`${BASE}/presets/${encodeURIComponent(preset.id)}/${file}`);
+    const { settings, unmapped, report } = importImudSettings(
+      legacy,
+      new Set(getSettingDefs().map(r => r.id)),
+      { availableFonts: fontCatalog.byFamily ? new Set(fontCatalog.byFamily.keys()) : undefined }
+    );
+    return { presetId: preset.id, presetLabel: preset.label, source: preset.source, version: preset.version, setId: set.id, setLabel: set.label, settings, unmapped, report };
+  }
+
   /** רשימת הערכות המוטמעות (שמות קבצים בלבד — לא נטענות עד בחירה). */
   function listSettingSets() { return SETTING_SETS.slice(); }
 
@@ -20673,7 +20753,7 @@ function createImudLibrary(engine) {
     return fontCatalog.loaded ? new Set(fontCatalog.byFamily.keys()) : null;
   }
 
-  return { loadFontCatalog, loadFont, loadDefaultExportFont, listDesigns, ensureDesign, ensureThemeSet, loadLegacyDefaults, loadHeadingFont, exportFontCss, resolveFamily, loadFontStack, catalogFamilies, listSettingSets, loadSettingSet, fontStatus, catalogEntries };
+  return { loadFontCatalog, loadFont, loadDefaultExportFont, listDesigns, ensureDesign, ensureThemeSet, loadLegacyDefaults, loadHeadingFont, exportFontCss, resolveFamily, loadFontStack, catalogFamilies, listSettingSets, loadSettingSet, listSettingPresets, loadSettingPreset, fontStatus, catalogEntries };
 }
 
 module.exports = { createImudLibrary, DESIGN_FILES };
