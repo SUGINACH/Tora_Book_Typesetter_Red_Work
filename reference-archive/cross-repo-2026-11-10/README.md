@@ -15,12 +15,15 @@
 | `SUGINACH/Tora_Book_Typesetter_Rust@main` | `00fe36350dbb466231a1d4a83941c350d36db232` | ADRs, compatibility and provenance contracts only; Rust engine not imported |
 | `SUGINACH/Typesetter_doc@main` | `ad71c63f87a940ac92140ea1d7a1f4de7eb8f8f9` | Curated planning, research, issue catalog and cross-repository comparison documents |
 
+| `SUGINACH/IMUD_TORANI@main` | `da31142ed868da987b14af5213b41495e81733c4` | Makom Bina v20.5 runtime data and historical layout scenario suite archived separately |
+
 ## Content groups
 
 - **Gold / Orange / Yellow / Green:** historical diagnostics and step-audit source, method documents, tests, fixtures and screenshot-report helper.
 - **React:** software requirements and architecture decisions, migration/source/settings inventories, and 11 raw input fixtures. These inputs are not expected line-break outputs and must not be used as a P6/P7-style parity target.
 - **Kotlin / Rust:** design and compatibility documents only; no executable engine or dependency graph is brought into RED.
 - **Typesetter_doc:** curated engineering protocol, deterministic-engine and Knuth–Plass research, RTL/two-column design, V23 dependency/history maps, issue coverage and all-repositories matrix. V21 and V23 references remain distinct; the archive does not authorize merging branches or profiles.
+- **IMUD main:** the historic browser-based layout scenario suite is preserved under `imud-main/layout-scenarios/`. Its committed baseline has 38 named scenarios; the old README says 21 and is stale for this pinned snapshot. Its old Playwright/DOM runner is archive-only.
 
 ## Execution boundary
 
@@ -105,4 +108,17 @@ Each destination blob was compared with its source Git blob during import. The 6
 | `yellow-v22/tests/engine-inputs.test.js` | `SUGINACH/Tora_Book_Typesetter_Yellow@V22` | `64f64a5b0ded…` | `tests/engine-inputs.test.js` | `2d680907e70ffcedc9f37bdf3a6cd2ff90eabaac` |
 | `yellow-v22/tests/engine-trace.test.js` | `SUGINACH/Tora_Book_Typesetter_Yellow@V22` | `64f64a5b0ded…` | `tests/engine-trace.test.js` | `f8aac7207190011f0c9550f5375801d46aab2366` |
 
-**Total:** 67 archived files, plus this README. This is provenance-preserving reference material, not adoption into runtime.
+### IMUD main — historical layout suite (additional 8 files)
+
+| Archived path | Source ref | Locked source commit | Original source path | Git blob |
+|---|---|---|---|---|
+| `imud-main/layout-scenarios/scenarios.js` | `SUGINACH/IMUD_TORANI@main` | `da31142ed868da987b14af5213b41495e81733c4` | `tests/layout/scenarios.js` | `8d05c43a70141c60fcfa6c379fdba6802f29f25c` |
+| `imud-main/layout-scenarios/baseline.json` | `SUGINACH/IMUD_TORANI@main` | `da31142ed868da987b14af5213b41495e81733c4` | `tests/layout/baseline.json` | `f9fa529b2158d3fea911c6fabd676dd17ae03bc3` |
+| `imud-main/layout-scenarios/run-suite.js` | `SUGINACH/IMUD_TORANI@main` | `da31142ed868da987b14af5213b41495e81733c4` | `tests/layout/run-suite.js` | `d874880912577386a9beb9d403e35d3e76b4fc58` |
+| `imud-main/layout-scenarios/check_layout.js` | `SUGINACH/IMUD_TORANI@main` | `da31142ed868da987b14af5213b41495e81733c4` | `tests/layout/check_layout.js` | `0899b27cbf4a41240b46756d65f16d819011aca8` |
+| `imud-main/layout-scenarios/common.js` | `SUGINACH/IMUD_TORANI@main` | `da31142ed868da987b14af5213b41495e81733c4` | `tests/lib/common.js` | `694e163bdc0ee4f97211674e8fcd4bcf7fb6f457` |
+| `imud-main/README-tests.md` | `SUGINACH/IMUD_TORANI@main` | `da31142ed868da987b14af5213b41495e81733c4` | `tests/README.md` | `5b1b1c8fa9e8bb263243dd23b45147a439bfdc7b` |
+| `imud-main/layout-scenarios/problem_chapters.txt` | `SUGINACH/IMUD_TORANI@main` | `da31142ed868da987b14af5213b41495e81733c4` | `tests/corpus/problem_chapters.txt` | `3eb24e7dadfb09cefa3e12745574d644df72310f` |
+| `imud-main/layout-scenarios/test_doc.txt` | `SUGINACH/IMUD_TORANI@main` | `da31142ed868da987b14af5213b41495e81733c4` | `tests/corpus/test_doc.txt` | `e0146bafae845e321e8bfd5cbfcea5714dabed12` |
+
+**Total:** 75 archived files, plus this README (67 previously indexed cross-repo reference files and 8 IMUD layout-suite source files). This is provenance-preserving reference material, not adoption into runtime.
