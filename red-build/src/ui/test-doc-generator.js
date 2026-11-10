@@ -37,6 +37,10 @@ function mulberry32(seed) {
 /** הזרע הקבוע של מצב "קבוע" — אף פעם לא משתנה (נעילת הדטרמיניזם בין גרסאות פריסה). */
 const FIXED_SEED = 0x54F2A17;
 
+const { lexDocument } = require('../engine/parser/dfa-lexer');
+const { tokenize } = require('../engine/parser/block-tokenizer');
+const { assertHeadingStructure } = require('../engine/parser/document-structure');
+
 /** מאגרי מילים — עברית אמיתית באורכים מגוונים (2–11 תווים) לריאליזם טיפוגרפי. */
 const WORDS = [
   'תורה', 'הלכה', 'סוגיה', 'שיעור', 'דין', 'טעם', 'פשט', 'דרש', 'רמז', 'סוד',
@@ -230,7 +234,7 @@ function chapterLines(rng, opts, chapterIdx) {
     if (i === guaranteedAt) {
       lines.push(`כותרת ${guaranteedLvl} - ${subHeadingText(rng, guaranteedLvl)}`);
       if (chance(rng, 0.25)) { // רצף כותרות — עקת escort
-        lines.push(`כותרת ${Math.min(6, guaranteedLvl + 1)} - ${subHeadingText(rng, Math.min(6, guaranteedLvl + 1))}`);
+        lines.push(`כותרת ${Math.min(7, guaranteedLvl + 1)} - ${subHeadingText(rng, Math.min(7, guaranteedLvl + 1))}`);
       }
       blocksSinceHeading = 0;
       continue;
@@ -241,7 +245,7 @@ function chapterLines(rng, opts, chapterIdx) {
       const lvl = isTop ? randInt(rng, 4, 5) : isBottom ? randInt(rng, 5, 6) : randInt(rng, 4, 6);
       lines.push(`כותרת ${lvl} - ${subHeadingText(rng, lvl)}`);
       if (chance(rng, 0.25)) { // רצף כותרות — עקת escort
-        lines.push(`כותרת ${Math.min(6, lvl + 1)} - ${subHeadingText(rng, lvl + 1)}`);
+        lines.push(`כותרת ${Math.min(7, lvl + 1)} - ${subHeadingText(rng, lvl + 1)}`);
       }
       blocksSinceHeading = 0;
       continue;
@@ -313,7 +317,10 @@ function generateTestDocument(opts = {}) {
   out.push('הערות סיום - הערות המחבר');
   out.push(paragraphText(rng, randInt(rng, 10, 20)));
 
-  return out.join('\n');
+  const document = out.join('\n');
+  const parsed = lexDocument(document);
+  assertHeadingStructure(tokenize(parsed.bodyLines));
+  return document;
 }
 
 module.exports = { generateTestDocument, FIXED_SEED, mulberry32 };
