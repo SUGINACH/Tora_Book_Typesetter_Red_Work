@@ -121,11 +121,11 @@ function typeset(rawText, settingsIn, env = {}) {
   const structuralTokens = tokenize(structuralBody, structuralParseOpts);
   assertHeadingStructure(structuralTokens, structuralParseOpts);
 
-  // **S4.9 (פרופיל העימוד המקורי):** הגדרות שמקורן ב-default_settings.json של
-  // התוכנה המקורית (importImudSettings מסמן layout-profile='imud' ומצרף
-  // את ה-JSON הגולמי) ⇒ הפעלת הפורט הנאמן של מנוע המקור. התנהגות המקור
-  // היא המפרט — כולל הגיאומטריה המדויקת שנמדדה מקובצי הייחוס שהעלה המשתמש
-  // (בקשת 03.11: "בדיקת עימוד מתמטית ומוחלטת דרך וורקפלו").
+  // **S4.9 (פרופיל IMUD/Legacy):** הגדרות שיובאו מ-default_settings.json של
+  // התוכנה המקורית (importImudSettings מסמן layout-profile='imud' ומצרף את
+  // ה-JSON הגולמי) מפעילות את נתיב התאימות Legacy/IMUD. הנתיב משמר את
+  // סמנטיקת ההגדרות וההתנהגות ההיסטורית של הייבוא; קובצי ה-PDF הישנים
+  // נשארים דוגמאות המחשה/אבחון בלבד ואינם מפרט גיאומטרי או יעד קבלה ל-RED.
   if (settingsIn && settingsIn['_layout-profile'] === 'imud' && settingsIn._imudRaw) {
     const { legacyTypeset } = require('../layout/legacy-imud-flow');
     return legacyTypeset(rawText, settingsIn, env);

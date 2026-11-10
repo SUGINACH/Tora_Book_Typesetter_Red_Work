@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""tools/layout-parity/extract-reference.py — חילוץ הייחוס הגיאומטי המוחלט.
+"""tools/layout-parity/extract-reference.py — חילוץ תיאורי של דוגמת PDF היסטורית.
 
 מקור: קובצי ה-PDF של הגרסה הישנה (הצהובה) שהועלו ל-audits:
   * "דוגמא מגרסא ישנה.pdf"                          — שכבת הטקסט הנקייה (גיאומטריה אמיתית)
@@ -8,7 +8,7 @@
     (טקסט לבן ב-Consolas/TimesNewRomanPSMT: page / body-flow / block-2col /
      col:right|left | p-end|p-cut Nl Mw "ראשי פסקה" / h2-title / h2-siman ...)
 
-הפלט: audits/layout-reference.json — ייצוג מתמטי מלא של העימוד המקורי:
+הפלט: audits/layout-reference.json — נתוני תיאור/השוואה היסטוריים בלבד (לא מפרט, לא יעד עיצוב ולא אמת מידה לנכונות RED):
   * לכל עמוד: סוג, עמודון (מספר עמוד בגימטריה + מיקום), שלושת סלוטי הכותרת העליונה
     (טקסט + מיקום), תיבות הטורים, כל שורות הטקסט (bbox + גופן + גודל + יישור),
     והפסקאות מהתגיות (end/cut + מספר שורות + מספר מילים + מילים ראשונות).
