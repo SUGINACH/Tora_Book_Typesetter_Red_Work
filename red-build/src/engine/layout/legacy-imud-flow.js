@@ -2460,7 +2460,16 @@ function legacyTypeset(rawText, settings, env) {
           w: units.filter(u => u.kind === 'para' && u.hasWindow).length,
         });
         pg._blocks = pg._blocks || [];
-        pg._blocks.push({ yTop: Math.round(block.yTop*10)/10, r: cnt(rUnits), l: cnt(lUnits), rH: Math.round((ry-block.yTop)*10)/10, lH: Math.round((ly-block.yTop)*10)/10, split: !!block.split });
+        pg._blocks.push({
+          yTop: Math.round(block.yTop*10)/10,
+          r: cnt(rUnits), l: cnt(lUnits),
+          rH: Math.round((ry-block.yTop)*10)/10,
+          lH: Math.round((ly-block.yTop)*10)/10,
+          split: !!block.split,
+          // Diagnostic extension; present only when RED_DEBUG_BLOCKS=1.
+          headingTokens: [...rUnits, ...lUnits].filter(u => u.kind === 'heading')
+            .map(u => ({ tokenId: u.tokenId, level: u.level, text: u.text }))
+        });
       }
     }
     if (typeof process !== 'undefined' && process.env && process.env.RED_DEBUG_BLOCKS && stack.some(s => s.type === 'span')) {
