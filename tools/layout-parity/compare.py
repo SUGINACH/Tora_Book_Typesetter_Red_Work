@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""tools/layout-parity/compare.py — השוואה אבחונית לדוגמת PDF היסטורית ולא-נורמטיבית.
+"""ARCHIVE ONLY — tools/layout-parity/compare.py.
+
+הוראת משתמש מ־10.11.2026: אין להפעיל את ה-comparator ההיסטורי או לחשב P6/P7.
+הפונקציות הטהורות בקובץ נשמרות זמנית לשימוש verify-corpus.py בלבד.
+
 
 קלט:
   * audits/layout-reference.json  — חילוץ דטרמיניסטי של דוגמת העימוד הישנה (אינו מפרט)
@@ -711,4 +715,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    print("DISABLED: legacy PDF comparison and P6/P7 are suspended by user instruction dated 2026-11-10.")
+    raise SystemExit(2)

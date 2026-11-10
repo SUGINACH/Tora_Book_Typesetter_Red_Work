@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""tools/layout-parity/extract-reference.py — חילוץ תיאורי של דוגמת PDF היסטורית.
+"""ARCHIVE ONLY — tools/layout-parity/extract-reference.py.
+
+הוראת משתמש מ־10.11.2026: אין להפיק חילוץ חדש מן ה-PDF ההיסטורי או ליצור
+layout-reference.json חדש. הקובץ נשמר לתיעוד בלבד ונקודת ההפעלה שלו חסומה.
+
 
 מקור: קובצי ה-PDF של הגרסה הישנה (הצהובה) שהועלו ל-audits:
   * "דוגמא מגרסא ישנה.pdf"                          — שכבת הטקסט הנקייה (גיאומטריה אמיתית)
@@ -402,4 +406,5 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    print("DISABLED: historical PDF extraction is suspended by user instruction dated 2026-11-10.")
+    raise SystemExit(2)
