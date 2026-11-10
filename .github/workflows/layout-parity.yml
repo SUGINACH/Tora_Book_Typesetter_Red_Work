@@ -54,7 +54,7 @@ jobs:
       - name: Run RED through the live path (IMUD defaults + real font → model + PDF)
         run: node tools/layout-parity/run-ours.js
 
-      - name: Mathematical comparison against the old-version reference
+      - name: Legacy comparison diagnostic against the historical PDF
         run: |
           set +e
           python3 tools/layout-parity/compare.py \
@@ -64,17 +64,15 @@ jobs:
             audits/layout-parity-artifacts/parity-report.json
           ec=$?
           set -e
-          # קודי יציאה של compare.py: 0 תקין | 1 כשל HARD | 2 כשל PARITY | 3 שניהם.
-          # **04.11:** כשל HARD = באג אמיתי (חפיפות/גלישות/אובדן תוכן) — קטלני.
-          # פערי PARITY = עבודת כיול פתוחה מתועדת (הציון ממשיך לעלות עם כל
-          # תיקון; הדוח המלא עולה כ-artifact) — אינם חוסמים את ה-CI, אחרת
-          # כל דחיפה עד השלמת הזהות המלאה הייתה אדומה ואות אזהרה היה נחלש.
+          # קודי יציאה של compare.py: 0 ללא פער | 1 כשל HARD | 2 פערי Legacy | 3 שניהם.
+          # כשלי HARD נבדקים כשער נכונות; פערי Legacy הם תצפיות מול PDF ישן בלבד.
+          # פער Legacy אינו הוכחה לתקלה ואינו יעד תיקון. הדוח נשמר כ-artifact.
           if [ "$ec" -eq 1 ] || [ "$ec" -eq 3 ]; then
             echo "✗ HARD invariants FAILED (exit $ec) — כשל נכונות אמיתי"; exit 1
           fi
           if [ "$ec" -eq 2 ]; then
             score=$(python3 -c "import json;print(json.load(open('audits/layout-parity-artifacts/parity-report.json'))['summary']['score'])")
-            echo "⚠ PARITY gaps remain — score: ${score}% (open calibration: P1/P3b/P4/P6/P7; full report in artifact)"
+            echo "ℹ Legacy comparison differences — similarity: ${score}% (diagnostic only; full report in artifact)"
           fi
 
       # D-98: ציון Legacy נשמר כנתון להשוואה בלבד. אין רצפת ציון חוסמת:
