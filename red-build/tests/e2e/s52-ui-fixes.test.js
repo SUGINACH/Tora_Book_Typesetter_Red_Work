@@ -713,7 +713,7 @@ describe('Makom Bina v20.5 — preset מבודד ב-IMUD UI', () => {
     picker.value = PRESET_ID + '::תלמוד';
     fire(picker, 'change');
     await settle(30);
-    const preview = panel.root.querySelectorAll('[role="status"]')
+    const preview = panel.root.querySelectorAll('.action-info')
       .find(el => String(el.textContent).includes('תצוגה מקדימה:'));
     assert(preview, 'תצוגה מקדימה מוצגת');
     assert(preview.textContent.includes('IMUD_TORANI') && preview.textContent.includes('20.5'),
