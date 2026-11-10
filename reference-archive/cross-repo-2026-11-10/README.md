@@ -10,7 +10,7 @@
 | `SUGINACH/Tora_Book_Typesetter_Green@V23` | `69aac0b87e7b1262d0220e2c1eaf505bb319990a` | V23 audit utility and fixtures retained; not coupled to the RED renderer |
 | `SUGINACH/Tora_Book_Typesetter_Orange@main` | `d9f08b9ba1cba0b17c94c46019bd423fbbb0b5d2` | Historical design and step-audit variants |
 | `SUGINACH/Tora_Book_Typesetter_Yellow@V22` | `64f64a5b0ded3f0007a170caca463efd6cdd5e12` | Input/trace/diagnostic contract and tests retained as source reference |
-| `SUGINACH/Tora_Book_Typesetter_React@main` | `a2fa18e5395563e90a539a51c1f8856df393ab1b` | SRS, ADRs, migration inventory, settings matrix and raw line-battery inputs |
+| `SUGINACH/Tora_Book_Typesetter_React@main` | `a2fa18e5395563e90a539a51c1f8856df393ab1b` | SRS, ADRs 001–011, migration inventory, settings matrix and 11 raw input fixtures |
 | `SUGINACH/Tora_Book_Typesetter_Kotlin@main` | `8dc5b081d7d5c2059419c90e8a5cbca9c7e5e17c` | Technical specification only; Compose/Kotlin runtime not imported |
 | `SUGINACH/Tora_Book_Typesetter_Rust@main` | `00fe36350dbb466231a1d4a83941c350d36db232` | ADRs, compatibility and provenance contracts only; Rust engine not imported |
 | `SUGINACH/Typesetter_doc@main` | `ad71c63f87a940ac92140ea1d7a1f4de7eb8f8f9` | Curated planning, research, issue catalog and cross-repository comparison documents |
@@ -18,7 +18,7 @@
 ## Content groups
 
 - **Gold / Orange / Yellow / Green:** historical diagnostics and step-audit source, method documents, tests, fixtures and screenshot-report helper.
-- **React:** software requirements and architecture decisions, migration/source/settings inventories, and 11 short raw input fixtures. The line-battery files are not expected line-break outputs and must not be used as a P6/P7-style parity target.
+- **React:** software requirements and architecture decisions, migration/source/settings inventories, and 11 raw input fixtures. These inputs are not expected line-break outputs and must not be used as a P6/P7-style parity target.
 - **Kotlin / Rust:** design and compatibility documents only; no executable engine or dependency graph is brought into RED.
 - **Typesetter_doc:** curated engineering protocol, deterministic-engine and Knuth–Plass research, RTL/two-column design, V23 dependency/history maps, issue coverage and all-repositories matrix. V21 and V23 references remain distinct; the archive does not authorize merging branches or profiles.
 
@@ -33,14 +33,14 @@
 
 ## File-level provenance and blob identity
 
-Each destination blob was compared with its source Git blob during import. The 66 source files below retain their exact content; the Git SHA-1 shown is the original blob identity.
+Each destination blob was compared with its source Git blob during import. The 67 source files below retain their exact content; the Git SHA-1 shown is the original blob identity.
 
 | Archived path | Source ref | Locked source commit | Original source path | Git blob |
 |---|---|---|---|---|
 | `gold-v21/AUDIT_EXPANSION_PLAN.md` | `SUGINACH/Tora_Book_Typesetter_Gold@V21` | `a444d34ccad3…` | `work_doc/AUDIT_EXPANSION_PLAN.md` | `9210ec31b54c4bfe0f8176cd3f26ad658a726f22` |
+| `gold-v21/REPO_AUDIT_AND_TESTING.md` | `SUGINACH/Tora_Book_Typesetter_Gold@V21` | `a444d34ccad3…` | `work_doc/REPO_AUDIT_AND_TESTING.md` | `4a366024078089ac7a007a7ef787c3ec76811215` |
 | `gold-v21/audit-expansion.js` | `SUGINACH/Tora_Book_Typesetter_Gold@V21` | `a444d34ccad3…` | `audit-expansion.js` | `b4e6b01ad3d104eebfd2c9c1e15daf4ddf04e703` |
 | `gold-v21/audit-text-integrity.js` | `SUGINACH/Tora_Book_Typesetter_Gold@V21` | `a444d34ccad3…` | `audit-text-integrity.js` | `a99800685817510f7dffb4b303a8644186272849` |
-| `gold-v21/REPO_AUDIT_AND_TESTING.md` | `SUGINACH/Tora_Book_Typesetter_Gold@V21` | `a444d34ccad3…` | `work_doc/REPO_AUDIT_AND_TESTING.md` | `4a366024078089ac7a007a7ef787c3ec76811215` |
 | `gold-v21/scripts/generate-issues-pdf.js` | `SUGINACH/Tora_Book_Typesetter_Gold@V21` | `a444d34ccad3…` | `scripts/generate-issues-pdf.js` | `26fb2989d0e97b658b0dc943470a2d513aba0674` |
 | `gold-v21/scripts/step-by-step-audit.js` | `SUGINACH/Tora_Book_Typesetter_Gold@V21` | `a444d34ccad3…` | `scripts/step-by-step-audit.js` | `0bb09897b22901ed6aea55a904dbfcadf7c23a5a` |
 | `gold-v21/step-by-step-audit-Method.md` | `SUGINACH/Tora_Book_Typesetter_Gold@V21` | `a444d34ccad3…` | `work_doc/step-by-step-audit-Method.md` | `e19a2431461bf72180cc5f5a29ec385d20c0a40f` |
@@ -53,9 +53,11 @@ Each destination blob was compared with its source Git blob during import. The 6
 | `orange-main/parallel-step-by-step-audit-21.js` | `SUGINACH/Tora_Book_Typesetter_Orange@main` | `d9f08b9ba1cb…` | `parallel-step-by-step-audit-21.js` | `8d75fdb4fd2a47133f82629cecdbd4b881415b7c` |
 | `orange-main/parallel-step-by-step-audit-method-21.md` | `SUGINACH/Tora_Book_Typesetter_Orange@main` | `d9f08b9ba1cb…` | `parallel-step-by-step-audit-method-21.md` | `75efcc6edaae3f8ddd2e451a71e60c3e226794df` |
 | `orange-main/step-by-step-audit-Method.md` | `SUGINACH/Tora_Book_Typesetter_Orange@main` | `d9f08b9ba1cb…` | `step-by-step-audit-Method.md` | `ed9681945cc25fd0bf9177b985350efb878eedcd` |
+| `react-main/Software_Requirements_Specification.md` | `SUGINACH/Tora_Book_Typesetter_React@main` | `a2fa18e53955…` | `docs/Software_Requirements_Specification.md` | `e7a0f2c00cbff47fe5b0c6c0464c9bb6b161dac4` |
 | `react-main/adr/ADR-001-units.md` | `SUGINACH/Tora_Book_Typesetter_React@main` | `a2fa18e53955…` | `docs/adr/ADR-001-units.md` | `dffd641b2793e772b9fb45cc67fbf0a335c30574` |
 | `react-main/adr/ADR-002-canonical-hash.md` | `SUGINACH/Tora_Book_Typesetter_React@main` | `a2fa18e53955…` | `docs/adr/ADR-002-canonical-hash.md` | `aee032430966362d23f1679dd0e386840848539d` |
 | `react-main/adr/ADR-003-harfbuzz-wasm.md` | `SUGINACH/Tora_Book_Typesetter_React@main` | `a2fa18e53955…` | `docs/adr/ADR-003-harfbuzz-wasm.md` | `bca5b9781b59f9fa143d6910d5d132dfbb5c1cf0` |
+| `react-main/adr/ADR-004-linebreak-quality.md` | `SUGINACH/Tora_Book_Typesetter_React@main` | `a2fa18e53955…` | `docs/adr/ADR-004-linebreak-quality.md` | `3e6608303dfec27cfdba94a3c52827316e9f4e73` |
 | `react-main/adr/ADR-005-long-note-split.md` | `SUGINACH/Tora_Book_Typesetter_React@main` | `a2fa18e53955…` | `docs/adr/ADR-005-long-note-split.md` | `a001d889e973518fe5cb8037556eaaf80bcea7af` |
 | `react-main/adr/ADR-006-h3-behavior.md` | `SUGINACH/Tora_Book_Typesetter_React@main` | `a2fa18e53955…` | `docs/adr/ADR-006-h3-behavior.md` | `d40d7a234d8505afc19f365cfdb55f82114ba1ed` |
 | `react-main/adr/ADR-007-unicode-fidelity.md` | `SUGINACH/Tora_Book_Typesetter_React@main` | `a2fa18e53955…` | `docs/adr/ADR-007-unicode-fidelity.md` | `8dda5e88371ed7dae4c80caa5651b12df3a616d3` |
@@ -78,7 +80,6 @@ Each destination blob was compared with its source Git blob during import. The 6
 | `react-main/migration/settings-matrix.md` | `SUGINACH/Tora_Book_Typesetter_React@main` | `a2fa18e53955…` | `docs/migration/settings-matrix.md` | `5f9dbde52e50e347a523bcbc19789b75df8bae5b` |
 | `react-main/migration/source-manifest.json` | `SUGINACH/Tora_Book_Typesetter_React@main` | `a2fa18e53955…` | `docs/migration/source-manifest.json` | `ddd40da290454ad29fbca346ba231e6448b027d3` |
 | `react-main/migration/transfer-inventory.md` | `SUGINACH/Tora_Book_Typesetter_React@main` | `a2fa18e53955…` | `docs/migration/transfer-inventory.md` | `a952d8115c3f9732920f727cf0d65786d598198e` |
-| `react-main/Software_Requirements_Specification.md` | `SUGINACH/Tora_Book_Typesetter_React@main` | `a2fa18e53955…` | `docs/Software_Requirements_Specification.md` | `e7a0f2c00cbff47fe5b0c6c0464c9bb6b161dac4` |
 | `rust-main/adr/0001-legacy-profile-isolation.md` | `SUGINACH/Tora_Book_Typesetter_Rust@main` | `00fe36350dbb…` | `docs/adr/0001-legacy-profile-isolation.md` | `317a1f69b02deda17216d03ea74c320cb0b8f3e8` |
 | `rust-main/adr/0002-fixed-point-representation.md` | `SUGINACH/Tora_Book_Typesetter_Rust@main` | `00fe36350dbb…` | `docs/adr/0002-fixed-point-representation.md` | `4d3f70b94f2da12fcbaac82918fc15a4c2cf4d15` |
 | `rust-main/adr/0003-hebrew-shaping-and-bidi.md` | `SUGINACH/Tora_Book_Typesetter_Rust@main` | `00fe36350dbb…` | `docs/adr/0003-hebrew-shaping-and-bidi.md` | `d50e70ee377119f996a1caad47df1c0bd9d865ac` |
@@ -104,4 +105,4 @@ Each destination blob was compared with its source Git blob during import. The 6
 | `yellow-v22/tests/engine-inputs.test.js` | `SUGINACH/Tora_Book_Typesetter_Yellow@V22` | `64f64a5b0ded…` | `tests/engine-inputs.test.js` | `2d680907e70ffcedc9f37bdf3a6cd2ff90eabaac` |
 | `yellow-v22/tests/engine-trace.test.js` | `SUGINACH/Tora_Book_Typesetter_Yellow@V22` | `64f64a5b0ded…` | `tests/engine-trace.test.js` | `f8aac7207190011f0c9550f5375801d46aab2366` |
 
-**Total:** 66 archived files, plus this README. This is provenance-preserving reference material, not adoption into runtime.
+**Total:** 67 archived files, plus this README. This is provenance-preserving reference material, not adoption into runtime.
