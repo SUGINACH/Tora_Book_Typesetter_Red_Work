@@ -1,21 +1,19 @@
 name: layout-parity
 
-# בדיקת עימוד מתמטית־מוחלטת מול הייחוס של הגרסה הישנה (03.11 — בקשת המשתמש).
+# השוואה היסטורית (Legacy Diagnostic) מול PDF ישן — לא מפרט תוצאה סופית (D-98, 10.11.2026).
 #
-# הגרסה הישנה (הצהובה) הפיקה את קובצי ה-PDF ב-audits (כולל גרסאות עם סימון
-# גיאומטרי בלתי־נראה: תגיות p-end/p-cut + מידות בלוקים). extract-reference.py
-# הופך אותם לייצוג מתמטי מחויב (audits/layout-reference.json) — והרצה הזו
-# משווה את הפלט החי של RED (נתיב האפליקציה, גופן Guttman Rashi אמיתי,
-# מדידת font-metrics, ייצוא PDF) מול אותו ייחוס:
+# קובצי ה-PDF ב-audits הועלו בשלב מוקדם להמחשת יחסי אזורים, סוגי פריסות ושערים.
+# הם אינם מושלמים ואינם יעד חיקוי. extract-reference.py מחלץ מהם נתונים
+# ל-audits/layout-reference.json לצורך השוואה היסטורית בלבד. אין לפרש ציון
+# P1-P9 כהערכת איכות RED או להשתמש בו כהוראת תיקון מנוע:
 #
 #   HARD   — אינווריאנטים מוחלטים: שימור תוכן, אפס חפיפות, גבולות עמוד, יישור.
-#   PARITY — זהות למקור: מספר/סוגי עמודים, עמודונים (גימטריה יחידה), כותרות
-#            עליונות, תוכן-עניינים כפול, רצף פסקאות (שורות+מילים), שקילות
-#            שבירת שורות, תיבות טורים, מיקום כותרת/עמודון, גופן, פס שורות,
-#            וקומפקטיות כותרות פתיחה.
+#   LEGACY — דמיון ל-PDF הישן: נתון דיאגנוסטי בלבד. שינוי מכוון ב-RED יכול
+#             להוריד את הציון בלי להיות רגרסיה.
 #
-# הציון (0-100%) הוא האמת המתמטית על מצב העימוד. כל תיקון אמור להעלות אותו;
-# ירידה = נסיגה. קודי יציאה: 0 תקין | 1 כשל HARD | 2 כשל PARITY | 3 שניהם.
+# הציון אינו אמת מידה לאיכות ואינו תנאי קבלה. קודי יציאה: 0 ללא פער;
+# 1 כשל HARD; 2 פער Legacy; 3 שניהם. רק HARD והקורפוס נבחנים כשערי נכונות,
+# וגם כל בדיקת HARD חייבת להיות מוצדקת כאינווריאנט עצמאי.
 #
 # הערה: הייחוס נבדק לדטרמיניזם — ריצה מחדש של החילוץ חייבת לתת קובץ זהה
 # בתת-ספרה (git diff) — אחרת ההשוואה אינה תקפה.
@@ -79,23 +77,24 @@ jobs:
             echo "⚠ PARITY gaps remain — score: ${score}% (open calibration: P1/P3b/P4/P6/P7; full report in artifact)"
           fi
 
-      # **S5.2 (P-11 — קובע-רץ לציון הקבילה):** ירידה בציון = נסיגה. הציון נקרא
-      # מ-parity-report.json (summary.score, סקאלה 0-100) ומושווה מול בסיס נעול
-      # ב-red-build/tests/artifacts/parity-baseline.json (score ביחס 0-1).
-      # שלב זה אינו משנה את קודי היציאה של compare.py: HARD נשאר קטלני
-      # בשלב הקודם; פה רק רצפת הציון. העלאת הבסיס — בכוונה ובתיעוד בלבד.
-      - name: Parity ratchet — score floor vs committed baseline
+      # D-98: ציון Legacy נשמר כנתון להשוואה בלבד. אין רצפת ציון חוסמת:
+      # שינוי מכוון שמתאים את RED למפרט החדש עשוי להתרחק מה-PDF ההיסטורי.
+      - name: Legacy reference score — informational only (D-98)
+        if: always()
         run: |
           python3 - <<'EOF'
-          import json, sys
-          run = json.load(open('audits/layout-parity-artifacts/parity-report.json'))['summary']['score']
-          base = json.load(open('red-build/tests/artifacts/parity-baseline.json'))['score']
-          floor = base * 100  # הבסיס ביחס 0–1; compare.py מדווח 0–100
-          print(f'parity score: {run}% | baseline: {base} (= {floor:g}%)')
-          if run < floor:
-              print(f'✗ ציון הקבילה ירד מתחת לבסיס הנעול: {run}% < {floor:g}% — ירידה היא נסיגה; עדכון הבסיס רק בכוונה ובתיעוד')
-              sys.exit(1)
-          print(f'✓ ציון {run}% ≥ בסיס {floor:g}%')
+          import json, os
+          p = 'audits/layout-parity-artifacts/parity-report.json'
+          if not os.path.exists(p):
+              print('Legacy comparison report unavailable; see preceding step.')
+          else:
+              r = json.load(open(p, encoding='utf-8'))
+              s = r.get('summary', {})
+              print('Legacy reference similarity (not an acceptance score):',
+                    s.get('score'), '%')
+              for c in r.get('checks', []):
+                  if c.get('layer') == 'PARITY' and not c.get('pass'):
+                      print('LEGACY DIFFERENCE:', c.get('id'), c.get('name'))
           EOF
 
       - name: Always upload the full report + our PDF
