@@ -1,0 +1,27 @@
+name: heading-rollback-regression
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'red-build/tests/e2e/s62-user-questions.test.js'
+      - 'red-build/src/engine/layout/legacy-imud-flow.js'
+      - '.github/workflows/heading-rollback-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Poppler and DejaVu used by S6.2 acceptance tests
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils fonts-dejavu-core
+      - name: Run the focused S6.2 regression suite
+        run: cd red-build && node tests/e2e/s62-user-questions.test.js

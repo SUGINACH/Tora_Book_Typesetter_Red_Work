@@ -1,0 +1,46 @@
+name: rebuild-worker-bundles
+
+# Regenerate the committed browser bundles whenever their source graph changes.
+# This avoids a source/bundle SHA mismatch in the D-65 S10 gate.
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'red-build/src/engine/**'
+      - 'red-build/src/ui/engine-worker-main.js'
+      - 'red-build/src/ui/worker-protocol.js'
+      - 'tools/build-worker-bundle.js'
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Rebuild browser bundles from committed source
+        run: node tools/build-worker-bundle.js
+      - name: Commit bundle synchronization to this PR branch
+        env:
+          TARGET_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if git diff --quiet -- red-build/ui/engine-worker.bundle.js red-build/ui/app.bundle.js; then
+            echo "Browser bundles already match their source."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add red-build/ui/engine-worker.bundle.js red-build/ui/app.bundle.js
+          git commit -m "build: regenerate browser bundles"
+          git push origin "HEAD:${TARGET_BRANCH}"
+      - name: Verify D-65 bundle determinism
+        run: cd red-build && node tests/e2e/s10-ui.test.js

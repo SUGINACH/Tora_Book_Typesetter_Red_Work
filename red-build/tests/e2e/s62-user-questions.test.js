@@ -119,21 +119,54 @@ describe('S62.1 שאלה 4 — איזון טורים בזרימת המקור (ס
     }
   });
 
-  it('שימור תוכן מלא: הקורפוס האמיתי — contentPreserved=true; הפסד קיים במסמך הבדיקה מדווח ב-ledger (לא שקט)', () => {
-    // ההוכחה המחייבת לשימור תוכן היא על טקסט אמיתי (הקורפוס ההיסטורי —
-    // long_test_text.txt; סוויטת long-real-text מריצה אותו גם כן). האיזון
-    // מזיז שורות בין טורים — גם בהרצה כפולה של אותו קוד, המולטיסט של
-    // המילים המצוירות נשמר (נבדק ידנית מול הקוד שלפני התיקון: זהה).
+  it('שימור מלא במסמך הבדיקה הקבוע: כותרות H4–H6 אינן נעלמות או משוכפלות במעבר בין טורים', () => {
+    // היסטורית הותרו כאן שתי מילים חסרות ("לשון", "הפוסקים"). השחזור
+    // הוכיח שהן הכותרת H5 "לשון הפוסקים" (lt817), שנשלפה לאחור כאשר
+    // הכותרת הבאה לא נכנסה לטור הימני; באותו צעד H6 שוכפלה. אין עוד
+    // לקבל את הפגם כחריג מותר: כל הכותרות חייבות להופיע בדיוק פעם אחת.
     const corpusPath = path.join(REPO, '..', 'audits', 'long_test_text.txt');
     const corpus = fs.readFileSync(corpusPath, 'utf8');
     const rCorpus = legacyTypeset(corpus, imudSettings(), {});
     assertEq(rCorpus.contentPreserved, true, 'שימור תוכן על הקורפוס האמיתי');
-    // מסמך הבדיקה הקבוע מכיל הערות-ענק חוצות-עמודים — פגם 2-מילים
-    // **קיים מלפני התיקון** (נמדד גם על הקוד הקודם) ומדווח ב-ledger
-    // כ-content-loss — הדרישה: שהפגם לא התרחב בעקבות האיזון.
-    const loss = [...result.ledger.issues.values()].filter(x => x.kind === 'content-loss');
-    const missing = loss.length ? (loss[0].predicate_before && loss[0].predicate_before.missing) || 0 : 0;
-    assert(missing <= 2, `הפסד המילים המדווח התרחב מעבר לקיים-מקודם (2): ${missing}`);
+
+    const outputCount = (tokenId) => {
+      const numericId = Number(String(tokenId).replace(/^lt/, ''));
+      let count = 0;
+      for (const page of result.pages) {
+        for (const column of page.columns || []) {
+          for (const line of column || []) {
+            if (Number(line.tokenId) === numericId) count++;
+          }
+        }
+      }
+      return count;
+    };
+
+    const phraseHeadings = (result.tokens || []).filter(token =>
+      /^h[4-6]$/.test(String(token.type)) && token.text === 'לשון הפוסקים'
+    );
+    assert(phraseHeadings.length > 0, 'המסמך הקבוע חייב לכלול כותרות "לשון הפוסקים"');
+    for (const heading of phraseHeadings) {
+      assertEq(outputCount(heading.id), 1,
+        `כותרת ${heading.id} ("לשון הפוסקים") חייבת להופיע פעם אחת בדיוק; נמצאו ${outputCount(heading.id)}`);
+    }
+
+    const affectedPairs = [];
+    for (let i = 0; i < result.tokens.length - 1; i++) {
+      const current = result.tokens[i], next = result.tokens[i + 1];
+      if (current.type === 'h5' && current.text === 'לשון הפוסקים'
+          && next.type === 'h6' && next.text === 'חילוקי דינים') {
+        affectedPairs.push({ current, next });
+      }
+    }
+    assert(affectedPairs.length > 0, 'ה-fixture חייב לכלול את רצף H5 "לשון הפוסקים" → H6 "חילוקי דינים"');
+    for (const pair of affectedPairs) {
+      assertEq(outputCount(pair.next.id), 1,
+        `הכותרת העוקבת ${pair.next.id} ("חילוקי דינים") שוכפלה או אבדה`);
+    }
+    assertEq(result.contentPreserved, true, 'אין עוד חריגת שימור תוכן במסמך הבדיקה הקבוע');
+    assertEq((result.contentStats && result.contentStats.missing || []).length, 0,
+      'אין מילים חסרות במסמך הבדיקה הקבוע');
   });
 
   it('דטרמיניזם: שתי הרצות — אותו hash ואותם מספרי עמודים ברשומות', () => {
