@@ -91,3 +91,47 @@
 ## 7. חסימת כלי הייחוס הישן
 
 בהתאם להוראת המשתמש, `compare.py` ו-`extract-reference.py` נשארים כקוד/נתונים ארכיוניים בלבד. נקודות הכניסה שלהם חסומות. `verify-corpus.py` משתמש רק בפונקציות עזר טהורות מתוך `compare.py` לבדיקת ה-PDF הנוכחי של RED מול קלטו; אין בכך הפעלת P6/P7. אין להחזיר את ה-comparator ל-CI או ל-CLI. אם בעתיד תידרש הפרדת פונקציות העזר למודול משותף, יש לבצע זאת כשינוי תחזוקה נפרד ולשמור על בדיקות C1–C12.
+
+
+## 8. עדכון מצב מחייב לאחר הייבואים הנוספים — 10.11.2026
+
+סעיפים 2–5 לעיל הם מפת הבסיס. הטבלה וההכרעות כאן מעדכנות אותן בכל מקום שבו נכתב בעבר שרכיב טרם הועבר או טרם נשמר.
+
+### 8.1 מקורות וסטטוס העברה בפועל
+
+| מקור | מה נשמר/הועבר | מצב הפעלה |
+|---|---|---|
+| IMUD main | Makom Bina v20.5 — 4 קובצי JSON (249 מפתחות); סוויטת layout היסטורית — 8 קבצים (scenario generator, baseline, runner, checker, common helper, README ושני מסמכי קלט) | נתוני preset נמצאים בנתיב runtime נפרד אך עדיין אינם בבורר. סוויטת הבדיקות הישנה בארכיון בלבד. |
+| Gold V21 | 10 קובצי test-triggers; step-audit method/runner; audit expansion/text-integrity; issue-PDF generator; trace manager ותיעוד | קורפוס הטקסט ב-fixture archive נפרד; 8 קובצי השיטה/כלים בארכיון reference. אין הרצה או CI. |
+| Green V23 | screenshot-to-PDF helper ושלושה smoke fixtures; שיטת/מפת audit נשמרו באמצעות Typesetter_doc | ארכיון בלבד; נדרש manifest ו-adapter חדש של RED לפני שימוש. |
+| Yellow V22 | engine-inputs, engine-trace, engine-diagnostics ו-unit tests מקוריים | ארכיון בלבד; ה-EventLog/Ledger של RED נשארים מערכת האבחון היחידה. |
+| Orange main | שני מסמכי step-audit ושיטת audit מקבילה | ארכיון בלבד; ה-runner תלוי ב-globals של המימוש הישן. |
+| React main | SRS; ADR 001–011; migration inventory, source manifest, settings matrix, compatibility report; 11 line-battery input files | ארכיון בלבד. ה-fixtures הם קלטים סמנטיים; אין expected lines או התאמת פלט. |
+| Kotlin main | Technical specification | מסמך ארכיון בלבד; אין runtime או dependencies. |
+| Rust main | ADRs, compatibility/ownership, provenance/source recovery | מסמכי חוזה ארכיוניים; אין Rust engine. |
+| Typesetter_doc main | תכנית יציבות, פרוטוקול טיפול בממצאים, כללי עבודה, מחקר determinism/Knuth–Plass/RTL, מפת תלויות והיסטוריה V23, issue catalog/coverage ומטריצת repos | מסמכים ארכיוניים; נתונים ותוצאות CI שבהם מתוארכים לענפים ולקומיטים הישנים בלבד. אין להסיק מהם מצב RED נוכחי. |
+
+### 8.2 ארכיון וייחוס
+
+- הנתיב `reference-archive/cross-repo-2026-11-10/` מכיל כעת **75 קובצי מקור** בנוסף ל-README: 67 קובצי reference מהייבואים הקודמים ועוד 8 קובצי סוויטת layout מ-IMUD main.
+- README הארכיון הוא אינדקס provenance ברמת קובץ: repository/ref, commit מקור, נתיב מקורי ו-Git blob ID. כל 75 קובצי המקור הועתקו byte-for-byte; אין להפוך אותם לקוד פעיל.
+- סוויטת IMUD: baseline הנעול מכיל **38 רשומות scenario**. ה-README המקורי אומר 21 — נתון stale ביחס ל-baseline בקומיט המקור הנעול. לא שינינו את המקור; תיעדנו את הסתירה ב-README הארכיוני.
+- הייבוא אינו מעיד שכל חמשת המאגרים ההיסטוריים הועברו בשלמותם. זהו ארכיון ממוקד של רכיבים, תיעוד, harnesses ו-fixtures שנבחרו; יתר הקבצים/היסטוריית הריפו לא הועתקו.
+
+### 8.3 אימות בטיחות
+
+- לא הועתקו קבצי archive אל `red-build/src/**`; לא נוספו tests או fixtures ארכיוניים ל-`npm test`, corpus manifest או GitHub Actions.
+- לא הורצו IMUD scenarios, Gold triggers, Yellow tests או Green helper מול RED.
+- שינויי ה-workflow והחסימה של CLI הייחוס קדמו לריצת CI המאומתת על commit `78a253191e586484f203695149fba2b29925f461`: CI, layout-invariants, rebuild-worker-bundles ו-full-math-audit הסתיימו בהצלחה (פרטים ב-WORKLOG). כל commits הארכיון/תיעוד שלאחר מכן אינם משנים runtime או workflow.
+- אין להפעיל את הכלים הישנים כדי “לוודא” את הארכיון. הזהות אומתה ברמת Git blob.
+
+### 8.4 סדר ההמשך המתוקן
+
+1. **Makom Bina UI adapter:** ה-loader הקיים ב-`imud-library.js` מכיר רק את שלוש ערכות הסגנון הרגילות. יש להוסיף קבוצת preset נפרדת ל-v20.5, עם שם/מקור/גרסה, preview והחלה מפורשת. לא לשנות את ברירת המחדל, לא להעתיק לתיקיית הערכות הרגילה ולא להפעיל preset באתחול.
+2. **בחירת fixtures מ-IMUD line-battery ו-layout scenarios:** למפות כיסוי סמנטי מול בדיקות RED; לבחור רק מקרים חסרים, לבדוק D-100, וליצור קובצי RED-native חדשים. אין להריץ harness ישן ואין לשמר baseline page counts או line layouts כציפייה.
+3. **Gold trigger corpus:** לעבור על 10 הקבצים, לזהות תחביר ישן/מבנים לא תקינים, ולהפיק נגזרי RED רק אם הם עומדים ב-D-100 ומכסים דרישה שעדיין חסרה.
+4. **Screenshot report adapter:** להגדיר screenshot-manifest של RED ואז לכתוב adapter עצמאי. אין להשתמש בקובץ Green המקורי כ-runner פעיל.
+5. **Step-by-step audit:** לממש קודם reducer טהור של snapshots/deltas על מודל RED; רק אחר כך לשקול instrumentation opt-in. אין מערכת trace שנייה ואין snapshot DOM בכל שלב.
+6. **Yellow/Gold diagnostic contracts:** להוסיף רק שדות/מצבים שהוכחו כחסרים ב-EventLog/Ledger/report-schema, עם negative controls. לא להעתיק globals או tests ישנים.
+7. **Kotlin/Rust/React engines:** להשאיר ארכיטקטורה/ADR כחומר ביקורת. קוד runtime זר לא ייכנס ל-RED.
+8. **P6/P7:** אין שלב עתידי, אין משימת המרה ואין שימוש במדדים. ההשעיה מלאה.
