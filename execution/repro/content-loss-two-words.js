@@ -104,6 +104,8 @@ function main() {
   fs.mkdirSync(OUT, { recursive: true });
   const documentText = generateTestDocument({ mode: 'fixed', scale: 'full' });
   const settings = settingsForFixedDocument();
+  // The detailed block snapshot is opt-in and does not affect layout decisions.
+  if (process.env.RED_DEBUG_BLOCKS == null) process.env.RED_DEBUG_BLOCKS = '1';
   const result = legacyTypeset(documentText, settings, {});
 
   const sourceHeadings = sourceHeadingLines(documentText);
@@ -158,6 +160,37 @@ function main() {
           outputRefs: refs.slice(0, 5)
         };
       })
+    };
+  });
+
+  const tracePageIndexes = new Set();
+  for (const missing of missingCandidateTokens) {
+    for (const delta of [-2, -1, 1, 2]) {
+      const token = (result.tokens || []).find(t => tokenNumericId(t) === missing.tokenId + delta);
+      if (!token) continue;
+      for (const ref of outputRefsForToken(result.pages || [], missing.tokenId + delta)) {
+        tracePageIndexes.add(ref.pageIndex);
+      }
+    }
+  }
+  const headingTracePages = [...tracePageIndexes].sort((a, b) => a - b).map(pageIndex => {
+    const page = result.pages[pageIndex];
+    return {
+      page: pageIndex + 1,
+      type: page.type,
+      blockTrace: page._blocks || [],
+      linesNearHeadingTokens: (page.columns || []).map((column, columnIndex) => ({
+        column: columnIndex + 1,
+        lines: (column || []).filter(line => {
+          const id = Number(line.tokenId);
+          return Number.isFinite(id) && missingCandidateTokens.some(m => Math.abs(id - m.tokenId) <= 2);
+        }).map(line => ({
+          tokenId: line.tokenId,
+          kind: line.kind,
+          level: line.level || null,
+          text: lineText(line)
+        }))
+      }))
     };
   });
 
@@ -220,6 +253,7 @@ function main() {
     },
     outputLinesContainingTargetWords: outputTargetLines,
     diagnostics: {
+      headingTracePages,
       pageColumns: (result.pages || []).slice(0, 3).map((p, i) => ({
         page: i + 1,
         pageType: p.type,
