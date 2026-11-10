@@ -76,7 +76,7 @@ describe('IMUD Makom Bina v20.5 — isolated runtime preset import', () => {
           setId + ': every source key has a documented disposition'
         );
         assertEq(loaded.settings._imudRaw, raw, setId + ': original values remain available to the IMUD compatibility path');
-        assertEq(loaded.settings._layout-profile, 'imud', setId + ': explicit IMUD compatibility profile');
+        assertEq(loaded.settings['_layout-profile'], 'imud', setId + ': explicit IMUD compatibility profile');
       }
       assert(requests.includes('presets/' + PRESET_ID + '/default_settings.json'),
         'default preset fetched from its isolated source directory');
