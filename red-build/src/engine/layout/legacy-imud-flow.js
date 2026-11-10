@@ -832,7 +832,23 @@ function legacyTypeset(rawText, settings, env) {
   );
   const fnLayoutMode = String(fnSet('fn-layout-mode', 'continuous'));
   const fnPolicy = String(fnSet('long-footnote-policy', 'split'));
-  const fnResetMode = String(fnSet('fn-reset-mode', 'siman'));
+  // **S6.5 (R2-M4):** Legacy must consume the normalized RED setting first.
+  // Previously it always read _imudRaw.fn-reset-mode, so a user change to
+  // footnote-reset-policy was ignored and the UI setting became a no-op.
+  // Keep the old IMUD key as a compatibility fallback for direct legacy callers.
+  const rawFnReset = String(fnSet('fn-reset-mode', 'siman'));
+  const legacyFnReset = ({
+    siman: 'section',
+    chapter: 'section',
+    page: 'page',
+    continuous: 'continuous',
+    part: 'part'
+  })[rawFnReset] || 'section';
+  const fnResetMode = String(settings['footnote-reset-policy'] != null
+    ? settings['footnote-reset-policy'] : legacyFnReset);
+  if (!['page', 'section', 'part', 'continuous'].includes(fnResetMode)) {
+    throw new Error(`Invalid footnote-reset-policy for Legacy/IMUD: ${fnResetMode}`);
+  }
   const fnBarMaxRaw = Number(fnSet('fn-bar-max-height-px', 0));
   const fnBarMax = (Number.isFinite(fnBarMaxRaw) && fnBarMaxRaw > 0)
     ? Math.min(fnBarMaxRaw, FN_FULL_CAP_PX) : FN_FULL_CAP_PX;
@@ -1154,7 +1170,7 @@ function legacyTypeset(rawText, settings, env) {
     // **S4.26 (איפוס מספור פר-פרק):** כל פתיחת מקטע h2/h0 פותחת ספירה חדשה
     // (דיווח משתמש: "איפוס מספרי הערות בכל פרק (כותרת 2) ולא בכל עמוד").
     // מצב page שומר על המספור העמודי ההיסטורי; continuous אינו מאפס לעולם.
-    if ((isH0 || isH2) && fnResetMode === 'siman') {
+    if ((isH0 || isH2) && fnResetMode === 'section') {
       fnChapterCounter = 0;
       fnNoteNumbers.clear();
     }
@@ -1262,7 +1278,7 @@ function legacyTypeset(rawText, settings, env) {
           // וסמן הרישום זהים גם בהצגה חוזרת (פסקה חוצת-עמודים). מצב page
           // ממשיך לגזור מקום בתור (התנהגות היסטורית).
           let num = null;
-          if (fnResetMode === 'siman') {
+          if (fnResetMode !== 'page') {
             num = fnNoteNumbers.get(k);
             if (num == null) { fnChapterCounter++; num = fnChapterCounter; fnNoteNumbers.set(k, num); }
           }
@@ -1271,7 +1287,7 @@ function legacyTypeset(rawText, settings, env) {
         }
         const q = fnQueue[idx];
         const mkNum = (q && q.num != null) ? q.num
-          : (fnResetMode === 'siman' && fnNoteNumbers.has(k) ? fnNoteNumbers.get(k) : idx + 1);
+          : (fnResetMode !== 'page' && fnNoteNumbers.has(k) ? fnNoteNumbers.get(k) : idx + 1);
         // **EXT-17:** המפריד אחרי המספר — הגדרת המקור (note-num-separator).
         return LineBreaker.markerWord(mkNum, cfg.fnNumSeparator);
       };
@@ -1801,7 +1817,7 @@ function legacyTypeset(rawText, settings, env) {
             // בפרק כבר ממוספרות בשלב זה; הפסקה ממודדת פעם אחת לפני הפליטה).
             // במצב page המספר נגזר ממקום בתור בזמן תצוגה — אינו צפוי; נותרת
             // ההתנהגות ההיסטורית ('א' בגודל הגוף).
-            fnResetMode === 'siman' ? {
+            fnResetMode !== 'page' ? {
               markerOf: (i) => fnChapterCounter + i + 1,
               markerSizePt: cfg.fnListingNumSize,
               markerMeasure: (t, sz) => fnApi.measureTextWidth(t, sz, 0),
@@ -2450,6 +2466,11 @@ function legacyTypeset(rawText, settings, env) {
   for (const sec of sections) {
     if (sec.subShaar) {
       const t = sec.subShaar;
+      // **S6.5 (R2-M4):** part scope resets only at the H1/sub-shaar boundary.
+      if (fnResetMode === 'part') {
+        fnChapterCounter = 0;
+        fnNoteNumbers.clear();
+      }
       if (cfg.resetSimanOnH1) simanCounter = 0;
       const pg = newPage('shaar-sub');
       pg._secStartLevel = 1; // **EXT-15:** שער-משנה נפתח כמקטע h1
