@@ -2,9 +2,9 @@
 'use strict';
 
 // Session 03 — deterministic reproduction/inspection of the already-known
-// two-word loss in the fixed stress document. This script does not modify
-// engine code. It captures the exact source tokens and where their units
-// appear in the final legacy layout.
+// two-word loss in the fixed stress document. It enables only opt-in,
+// observational trace output for one token; no placement condition is changed.
+// The exact source tokens and final block/column placements are captured.
 
 const fs = require('fs');
 const path = require('path');
