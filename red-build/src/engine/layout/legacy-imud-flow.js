@@ -984,6 +984,14 @@ function legacyTypeset(rawText, settings, env) {
   if (cur.tokens.length || cur.newPage) sections.push(cur);
 
   const pages = [];
+  // Diagnostic-only trace, disabled unless a precise token ID is requested.
+  // This is observational instrumentation: it must not influence placement.
+  const traceHeadingId = (typeof process !== 'undefined' && process.env && process.env.RED_TRACE_HEADING_ID != null)
+    ? Number(process.env.RED_TRACE_HEADING_ID) : -1;
+  const traceHeading = (event, data) => {
+    if (!(traceHeadingId >= 0) || typeof process === 'undefined' || !process.env || !process.env.RED_TRACE_HEADING_ID) return;
+    console.log('[RED_HEADING_TRACE] ' + JSON.stringify({ event, targetTokenId: traceHeadingId, ...data }));
+  };
   const headingFolio = new Map();
   let simanCounter = 0;
   let currentH2 = '';
@@ -1147,6 +1155,18 @@ function legacyTypeset(rawText, settings, env) {
   // ---------- זרימת מקטע ----------
   function flowSection(sec) {
     const toks = sec.tokens;
+    if (traceHeadingId >= 0) {
+      const targetIndex = toks.findIndex(t => Number(t.id) === traceHeadingId);
+      if (targetIndex >= 0) {
+        traceHeading('section-membership', {
+          pageCountAtEntry: pages.length,
+          sectionTokenCount: toks.length,
+          targetIndex,
+          neighborhood: toks.slice(Math.max(0, targetIndex - 4), targetIndex + 5)
+            .map(t => ({ id: t.id, type: t.type, level: t.level || null, text: String(t.text || '').slice(0, 180) }))
+        });
+      }
+    }
     let ti = 0;
     let sectionFirst = true;
     const isH0 = sec.newPage && sec.newPage.level === 0;
@@ -1690,6 +1710,22 @@ function legacyTypeset(rawText, settings, env) {
 
       fillPage: while (ti < toks.length || pending) {
         const tok = pending ? pending.token : toks[ti];
+        if (traceHeadingId >= 0 && tok && Math.abs(Number(tok.id) - traceHeadingId) <= 2) {
+          traceHeading('loop-start', {
+            pageIndex: pages.length,
+            ti,
+            tokenId: tok.id,
+            type: tok.type,
+            level: tok.level || null,
+            text: String(tok.text || '').slice(0, 180),
+            pending: !!pending,
+            fill: block ? block.fill : null,
+            cursor: block ? block.cursor.slice() : null,
+            columnUnitCounts: block ? block.cols.map(col => col.length) : null,
+            fnQueue: fnQueue.length,
+            pendingFootnotes: pendingFootnotes.length
+          });
+        }
         const mode = tok.type[0] === 'h' ? (HEADING_MODES[tok.level] || 'inline_2col') : 'inline_2col';
 
         if (mode === 'span_1col' && !pending) {
@@ -1750,16 +1786,39 @@ function legacyTypeset(rawText, settings, env) {
           const hFits = FIT_MODEL === 'dom'
             ? snapPx(block.cursor[block.fill] - block.yTop + hTotal) <= Math.floor(colBottom() - block.yTop)
             : block.cursor[block.fill] + hTotal <= colBottom();
+          if (traceHeadingId >= 0 && Number(tok.id) === traceHeadingId) {
+            traceHeading('heading-fit-evaluated', {
+              pageIndex: pages.length,
+              ti,
+              tokenId: tok.id,
+              level: tok.level,
+              fill: block.fill,
+              cursor: block.cursor.slice(),
+              blockYTop: block.yTop,
+              colBottom: colBottom(),
+              h,
+              hTotal,
+              hFits,
+              columnUnitCounts: block.cols.map(col => col.length),
+              trailingUnits: block.cols.map(col => col.slice(-4).map(u => ({
+                kind: u.kind, tokenId: u.tokenId, level: u.level || null, text: String(u.text || '').slice(0, 100)
+              })))
+            });
+          }
           if (!hFits) {
             if (block.fill === 0 && !isH0 && !(block.cols[0].length === 0)) {
               // **S4.13:** גם כאן המקור מחזיר כותרות זנב לפני מעבר טור —
               // כותרת שנותרה אחרונה בטור הימני תיפלט עם הפסקה הבאה בשמאלי.
-              ti -= rollbackTrailingHeadings();
+              const rolledBack = rollbackTrailingHeadings();
+              traceHeading('heading-rollback-to-left', { pageIndex: pages.length, tiBefore: ti, tokenId: tok.id, rolledBack, fillBefore: 0, columnUnitCountsAfter: block.cols.map(col => col.length) });
+              ti -= rolledBack;
               block.fill = 1; // המשך בטור השמאלי
             } else if (block.cols[block.fill].length || block.cols[0].length) {
               // **S4.13:** סיום הבלוק לפני שבירת העמוד — כמו המקור (כל בלוק
               // מסתיים בהיגיון הארבעה; כאן הטוקן הבא הוא הכותרת שלא נכנסה).
-              ti -= rollbackTrailingHeadings();
+              const rolledBack = rollbackTrailingHeadings();
+              traceHeading('heading-page-close', { pageIndex: pages.length, tiBefore: ti, tokenId: tok.id, rolledBack, fill: block.fill, columnUnitCountsAfter: block.cols.map(col => col.length) });
+              ti -= rolledBack;
               // **S6.2:** pageClose — הכותרת נופלת לראש העמוד הבא והבלוק
               // סופי כאן; סעיף 3 של המקור (טור ריק/הפרש > 60px ⇒ איזון).
               finalizeBlock(block, tok, false, true, 'heading-no-fit');
@@ -1771,6 +1830,15 @@ function legacyTypeset(rawText, settings, env) {
           }
           block.cursor[block.fill] += hTotal;
           ti++;
+          traceHeading('heading-placed', {
+            pageIndex: pages.length,
+            tokenId: tok.id,
+            level: tok.level,
+            placedColumn: block.fill + 1,
+            columnUnitCounts: block.cols.map(col => col.length),
+            cursor: block.cursor.slice(),
+            nextTi: ti
+          });
           continue;
         }
 
@@ -1999,6 +2067,29 @@ function legacyTypeset(rawText, settings, env) {
 
       // ---- פריסת המחסנית לעמוד: פסים + בלוקים → טורים עם y מפורש ----
       layoutStack(pg, stack, top);
+      if (traceHeadingId >= 0) {
+        const nearBlocks = stack.map((segment, index) => {
+          if (segment.type === 'span') {
+            return { index, type: 'span', tokenId: segment.tokenId, text: String(segment.text || '').slice(0, 100) };
+          }
+          const cols = segment.split ? [segment.split.r, segment.split.l] : segment.cols;
+          return {
+            index,
+            type: 'block',
+            columns: cols.map(col => col
+              .filter(u => u.tokenId != null && Math.abs(Number(u.tokenId) - traceHeadingId) <= 3)
+              .map(u => ({ kind: u.kind, tokenId: u.tokenId, level: u.level || null, text: String(u.text || '').slice(0, 140), lineCount: (u.lines || []).length })))
+          };
+        });
+        if (nearBlocks.some(b => b.type === 'span' ? (b.tokenId != null && Math.abs(Number(b.tokenId) - traceHeadingId) <= 3) : b.columns.some(col => col.length))) {
+          traceHeading('page-final-before-layout', {
+            pageIndex: pages.length,
+            nextTi: ti,
+            pending: pending ? { tokenId: pending.token.id, lineIdx: pending.lineIdx, lineCount: pending.lines.length } : null,
+            blocks: nearBlocks
+          });
+        }
+      }
 
       // ---- הערות שוליים בתחתית (bottom-anchored) ----
       if (fnQueue.length) {
