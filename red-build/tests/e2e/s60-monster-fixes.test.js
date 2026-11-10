@@ -129,7 +129,7 @@ describe('S6.0 — הבדיקה המפלצתית: רגרסיות תיקוני ש
       parts.push('כותרת 3 - תת סעיף ארוך ' + i);
       parts.push('פסקת גוף ממשית לתת סעיף ' + i + '.');
     }
-    const r = typeset(parts.join('\\n\\n'), legacySettings(), { noRecommendations: true });
+    const r = typeset(parts.join('\n\n'), legacySettings(), { noRecommendations: true });
     let stretched = 0;
     for (const p of r.pages) {
       if (!p.toc || !p.toc.rows || p.toc.rows.length < 2) continue;
