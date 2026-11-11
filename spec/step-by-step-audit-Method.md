@@ -463,3 +463,17 @@
 - module adapter אינו מיובא על ידי ה-renderer/Worker bundle כנתיב runtime פעיל, והוספתו לא משנה layout.
 
 השלב הבא: producer טהור שמקבל snapshots אמיתיים בנקודות pipeline מוגדרות ומספק evaluatedKinds/operation linkage, עם no-op hash proof. רק אחרי שהחוזה מוכח יתווסף opt-in instrumentation; UI יישאר לאחר מכן.
+
+## 16. עדכון זהויות עיטורים — 12.11.2026
+
+בביקורת CP4 נמצא שרוב עיטורי H2/H3 ושני סוגי עיטורים מבניים לא נשאו מזהה מקור ב-page.decorations. הדבר גרם ל-adapter להפיק object identity זמני ולסמן capture כ-incomplete אף שהמלבן עצמו היה מדויק.
+
+תיקון:
+- עיטורי H2 ו-H3 נושאים tokenId של הכותרת שממנה נוצרו.
+- מפרידי H3–H6 נושאים את rollbackKey הקיים וגם tokenId.
+- מפריד שער נושא sourceKey ייחודי מסוג shaar-divider:<pageType>.
+- עיטור סיום־פרק נושא tokenId של השורה האחרונה בעמוד, או sourceKey page-scoped כאשר אין token.
+- adapter מזהה rollbackKey, tokenId או sourceKey; עדיין מסמן עיטור שאין לו אף אחד מהם כ-incomplete.
+- בדיקת יחידה משחזרת עיטור כ-object חדש בשלב הבא ומוודאת שה-delta מדווח moved/resized על אותו elementId, ללא added/removed. הבדיקה מכסה tokenId וגם sourceKey.
+
+הוספת שדות אלו היא provenance בלבד. layoutHash ו-bodyGeometryHash ב-dp-planner.js מבוססים על עמוד/טורים/טוקנים/מילים/seq ואינם קוראים page.decorations או את שדות המקור החדשים; ה-no-op הגאומטרי נשאר בתוקף.

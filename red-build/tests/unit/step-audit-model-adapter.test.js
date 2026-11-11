@@ -328,19 +328,31 @@ describe('StepAudit RED model adapter', () => {
   it('tracks recreated ornament records through their source token instead of object identity', () => {
     const adapter = createStepAuditModelAdapter();
     const page = makePage(0, [[], []], {
-      decorations: [{
-        kind: 'h2-ornament', slot: 'h2-top', kindStyle: 'plain',
-        tokenId: 't-h2', x: 100, y: 40, w: 20, h: 10
-      }]
+      decorations: [
+        {
+          kind: 'h2-ornament', slot: 'h2-top', kindStyle: 'plain',
+          tokenId: 't-h2', x: 100, y: 40, w: 20, h: 10
+        },
+        {
+          kind: 'shaar-divider', slot: 'shaar-div-shaar-main', kindStyle: 'thin',
+          sourceKey: 'shaar-divider:shaar-main', x: 300, y: 50, w: 100, h: 2
+        }
+      ]
     });
     const first = adapter.snapshot({
       pages: [page], stage: 'ornament-plan', seq: 1, settings: {},
       evaluatedKindsByPage: { 'page-object-1': [] }
     });
-    page.decorations = [{
-      kind: 'h2-ornament', slot: 'h2-top', kindStyle: 'plain',
-      tokenId: 't-h2', x: 112, y: 42, w: 22, h: 12
-    }];
+    page.decorations = [
+      {
+        kind: 'h2-ornament', slot: 'h2-top', kindStyle: 'plain',
+        tokenId: 't-h2', x: 112, y: 42, w: 22, h: 12
+      },
+      {
+        kind: 'shaar-divider', slot: 'shaar-div-shaar-main', kindStyle: 'thin',
+        sourceKey: 'shaar-divider:shaar-main', x: 310, y: 52, w: 110, h: 3
+      }
+    ];
     const second = adapter.snapshot({
       pages: [page], stage: 'ornament-refresh', seq: 2, settings: {},
       evaluatedKindsByPage: { 'page-object-1': [] }
@@ -348,10 +360,16 @@ describe('StepAudit RED model adapter', () => {
     assertEq(first.capture.complete, true);
     assertEq(second.capture.complete, true);
     const delta = buildStepAudit({ checkpoints: [first.checkpoint, second.checkpoint], issues: [] }).pageDeltas[0];
-    assertEq(delta.added.filter((element) => element.role === 'ornament').length, 0);
-    assertEq(delta.removed.filter((element) => element.role === 'ornament').length, 0);
-    assertEq(delta.moved.map((item) => item.elementId), ['decoration:page-object-1:h2-top:t-h2']);
-    assertEq(delta.resized.map((item) => item.elementId), ['decoration:page-object-1:h2-top:t-h2']);
+    assertEq(delta.added.length, 0);
+    assertEq(delta.removed.length, 0);
+    assertEq(delta.moved.map((item) => item.elementId), [
+      'decoration:page-object-1:h2-top:t-h2',
+      'decoration:page-object-1:shaar-div-shaar-main:shaar-divider:shaar-main'
+    ]);
+    assertEq(delta.resized.map((item) => item.elementId), [
+      'decoration:page-object-1:h2-top:t-h2',
+      'decoration:page-object-1:shaar-div-shaar-main:shaar-divider:shaar-main'
+    ]);
   });
   it('marks note/decoration object-only identities incomplete', () => {
     const adapter = createStepAuditModelAdapter();

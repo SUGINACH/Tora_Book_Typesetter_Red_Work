@@ -159,3 +159,7 @@ The pure reducer and RED model adapter are implemented and covered by unit tests
 - the Ledger record target pN@tN (distinct from the CHECKS violation target paren@pN@tN) maps to a semantic paren-range element.
 
 No general all-stage checkpoint instrumentation is active. No all-mutation operationId linkage or issue-centered Testing Tab view exists yet. The next Step-Audit task is the pure checkpoint producer/caller contract (page model + evaluatedKinds + Ledger snapshot + operation metadata), followed by opt-in capture and no-op geometry/hash proof. Do not infer missing source identities, and do not add DOM measurements.
+
+## 11. Ornament audit identity — 12.11.2026
+
+Decoration records now carry semantic source anchors from ornament-plan: H2/H3 heading token, heading-divider rollback key + token, shaar-divider page-scoped sourceKey, and chapter-end source token/sourceKey. The adapter consumes these keys, so recreated decoration objects remain comparable across checkpoints. Object-only decorations are still marked incomplete. Geometry/layout decisions are unchanged.

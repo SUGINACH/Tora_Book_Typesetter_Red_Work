@@ -198,3 +198,7 @@ The field-by-field comparison is recorded in `spec/YELLOW_DIAGNOSTICS_CONTRACT_G
 - The current changes do not change line breaking, page balancing, measurement or renderer geometry. The added source-word identity is omitted from layout/body geometry hashes.
 
 The next safe step is a pure checkpoint producer over serialized RED page-model fixtures, then opt-in checkpoint capture with a no-op hash proof. Do not start a UI implementation before capture completeness and operation/issue linkage are proven.
+
+## 11. Ornament source identity — 12.11.2026
+
+H2/H3 ornaments, shaar dividers and chapter-end ornaments now carry tokenId/sourceKey provenance at creation in ornament-plan.js. The model adapter uses these keys before object identity and remains conservative when no semantic key exists. A unit regression covers recreated decoration objects and verifies a stable moved/resized delta. These are metadata-only additions; layout/body hashes exclude decoration metadata.

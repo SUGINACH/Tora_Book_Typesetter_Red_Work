@@ -3091,3 +3091,28 @@ P6/P7 אינם בשימוש כקריטריוני קבלה; לא שונו parser,
 ## Session 15a — הבהרת צורת ה-target של סוגריים ב-Ledger (12.11.2026)
 
 קריאה ישירה של protections-matrix.js ו-ledger.js הבהירה את ההבחנה: CHECKS.parenConsistency מחזיר violation.target=paren@p.id, אך ledger.create מקבל ושומר p.id בלבד. לכן issue.target ברשומת Ledger הוא pN@tN. ה-adapter, שמקבל רשומות Ledger, חייב להתאים ל-pN@tN; אין להחיל עליו את prefix paren@. תיקון זה הוחל בקוד ובבדיקות וה-E2E עודכן. אין שינוי ב-CHECKS או במבנה Ledger.
+
+
+## Session 16 — זהויות מקור לעיטורים ובדיקת שערים (12.11.2026)
+
+### 1. זהויות עיטורים
+- ornament-plan.js מצמיד tokenId לעיטורי H2/H3 ולמפרידי כותרות; heading-divider retains rollbackKey.
+- shaar-divider מקבל sourceKey ייחודי לפי page.type.
+- chapter-end ornament מקבל tokenId של השורה האחרונה או sourceKey page-scoped.
+- step-audit-model-adapter.js משתמש ב-rollbackKey/tokenId/sourceKey לפני object identity. אובייקט בלי מקור סמנטי נשאר incomplete.
+- נוסף unit test שמחליף אובייקטי decoration בין snapshots עם אותו מקור סמנטי, ומוודא אותו elementId יחד עם moved/resized ולא added/removed. הבדיקה מכסה גם tokenId וגם sourceKey.
+
+הנתונים הנוספים אינם משנים גאומטריה או פריסה: layoutHash ו-bodyGeometryHash אינם קוראים page.decorations או את שדות provenance החדשים.
+
+### 2. תוצאות אימות לפני בדיקת sourceKey המורחבת
+על HEAD 60675e60f4dddd49336b7c488e6601433121e189:
+- CI — success; שלושת shards עברו.
+- layout-invariants — success; layout-audit + very-long-corpus עברו.
+- rebuild-worker-bundles — success; Verify D-65 bundle determinism עבר.
+- full-math-audit — success; local audit על הקורפוס הגדול עבר; live סומן skipped.
+- יחידות StepAudit: reducer 13/13, adapter 20/20.
+- E2E pipeline: 16/16.
+ה-HEAD הקודם ecf7aaa7 כבר עבר את אותם ארבעת השערים לפני הרחבת זהויות העיטורים.
+
+### 3. בדיקת שערים נדרשת אחרי הרחבת sourceKey
+ה-commit הבא כולל בדיקת sourceKey מפורשת ותיעוד. יש לבדוק שוב את ארבעת ה-workflows על אותו HEAD חדש; אין להסתפק בתוצאות 60675e60 לבדיקת ה-unit החדשה.
