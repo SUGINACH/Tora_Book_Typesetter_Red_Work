@@ -79,8 +79,8 @@ RED כבר מחזיק:
 
 ## 6. סדר הטמעה לפי סיכון
 
-1. **הושלם — מיפוי חוזים:** המסמך הזה ומסמך `STEP_BY_STEP_AUDIT_GAP_ANALYSIS.md` מתעדים את החסר ואת הגבול הארכיטקטוני. Yellow נשאר archive-only.
-2. **נמוך — חוזה trace-v2:** להוסיף metadata שמבדיל verbosity/recording/completeness, בלי לשנות את האירועים עצמם. להוסיף בדיקות ל-`off`, ל-`standard` ול-`full`.
+1. **הושלם — מיפוי חוזים ושיטת audit:** המסמך הזה, `STEP_BY_STEP_AUDIT_GAP_ANALYSIS.md` ו-`step-by-step-audit-Method.md` מגדירים את הפער ואת הגבול הארכיטקטוני. Yellow נשאר archive-only.
+2. **בוצע בקוד — חוזה trace-v2:** commit `69a80232` הוסיף capture metadata (`recording`, `verbosity`, `eventStreamComplete`, `droppedEvents`, `omittedFields`) ובדיקות ל-`off`/`minimal`/`standard`/`full` ול-stage שנדחה. bundles סונכרנו ב-commit `fdcdfda3`; ריצות המשך על commit הבוט סומנו action_required, ולכן שערי CI ל-HEAD הסופי עדיין אינם מאומתים.
 3. **נמוך-בינוני — Run Input Manifest טהור:** canonicalize settings ונתוני font registry, לחשב hashes דטרמיניסטיים ולבדוק רגישות לשינוי/סדר מפתחות. אין קריאת DOM ואין rerun.
 4. **נמוך-בינוני — StepAudit reducer:** יחידה טהורה על snapshots/deltas סינתטיים: identity, split/merge lineage, page sibling changes, missing data, caps, issue lifecycle ו-verdict. עדיין ללא instrumentation במנוע.
 5. **בינוני — קישור אירועים לממצאים:** להוסיף operation/checkpoint IDs וקשר ל-`issue_id` רק לאחר שהמודלים הטהורים נבדקו.

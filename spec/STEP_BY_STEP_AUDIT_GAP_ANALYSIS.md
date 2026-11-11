@@ -168,3 +168,10 @@ The field-by-field comparison is recorded in `spec/YELLOW_DIAGNOSTICS_CONTRACT_G
 - EventLog/Ledger/diagnostics-v2/Testing Tab cover the basic diagnostics path. They do not yet tie each finding to a first-bad operation and a complete same-page sibling delta window.
 - `trace-verbosity=off` currently returns an event list without an explicit recording/completeness marker. The next safe runtime change, if approved by its tests, is additive trace metadata; an empty event list must never look like a completed zero-event audit.
 - The next implementation sequence is: trace-v2 recording metadata → pure Run Input Manifest → pure StepAudit reducer → operation/issue linkage → opt-in model checkpoints → issue-centered Testing Tab. No global wrappers or DOM geometry snapshots.
+
+
+## 9. RED step-by-step audit method
+
+נכתב מסמך שיטה מלא ונפרד: `spec/step-by-step-audit-Method.md`. הוא מגדיר את חלון הממצא, מלאי כל האלמנטים בעמוד, page/element identity ו-lineage, delta, רף הוכחת סיבתיות, סטטוסי Ledger, completeness, אפשרויות כיוונון, תקציב ביצועים וקריטריוני קבלה.
+
+המסמך הוא מפרט ליישום, לא הצהרה שהמנגנון כבר פעיל. סדר העבודה נשאר: reducer טהור → קישור operation/issue → instrumentation opt-in → Testing Tab. אין DOM snapshots או global wrappers.

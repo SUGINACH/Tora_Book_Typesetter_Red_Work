@@ -73,7 +73,7 @@
 1. **אימות CI — הושלם:** ב-HEAD `0d8dae7b55d5cdf03686faf21cdaf026ef6bade9` כל ארבעת ה-workflows הרלוונטיים הסתיימו בהצלחה. PR #6 נשאר פתוח ולא מוזג.
 2. **מטריצת כיסוי סמנטי — הושלמה בסבב ראשון:** `spec/IMPORT_FIXTURE_SEMANTIC_COVERAGE.md` ממפה את 11 קובצי React line-battery, עשרת Gold triggers וסוויטת IMUD מול בדיקות RED. מועמדי הפער מסומנים כמועמדים בלבד, לא כבאגים.
 3. **בדיקות RED-native ממוקדות:** לבדוק תחילה BiDi מעורב, ניקוד/טעמים, מקפים ורצפי whitespace; בנוסף לבדוק אם דרושות בדיקות חיוביות נפרדות ל-page-underfill ול-sparse-line. כל fixture ייכתב בתחביר RED ויעבור D-100. אין להריץ את קובצי המקור הישנים.
-4. **Step-by-step audit:** למפות את ה-EventLog/Ledger/trace הקיימים ולתכנן reducer טהור של snapshots/deltas. אין logger שני ואין DOM snapshot במסלול הרגיל.
+4. **Step-by-step audit:** מפרט השיטה הושלם ב-`spec/step-by-step-audit-Method.md`; מימוש reducer טהור על snapshots/deltas סינתטיים הוא השלב הבא. אין עדיין instrumentation במנוע, אין logger שני ואין DOM snapshot.
 5. **Yellow/Gold diagnostic contracts — מיפוי הושלם:** ראו `spec/YELLOW_DIAGNOSTICS_CONTRACT_GAP.md`. הפערים המוכחים/חלקיים הם Run Input Manifest, metadata של trace disabled/completeness וקישור issue↔operation/sibling-deltas. היישום ייעשה כתוספת למבנים הקיימים, עם negative controls.
 6. **Screenshot report:** אין כרגע producer של screenshots/manifest ב-RED. תחילה יש להגדיר manifest ו-producer של RED; רק לאחר מכן לכתוב PDF builder מוגן ועצמאי.
 7. **מנוע:** לפתוח שינוי parser/layout/typography רק לאחר בדיקה RED-native שמוכיחה פער ומגדירה את תחום ההשפעה. אין להעתיק runtime ממאגרים אחרים.
@@ -118,6 +118,7 @@
 - README הארכיון הוא אינדקס provenance ברמת קובץ: repository/ref, commit מקור, נתיב מקורי ו-Git blob ID. שלושת המקורות הנוספים אומתו מול ה-blob בקומיט המקור; תשעת העותקים הכפולים הושוו ל-blob של הקובץ הקנוני. אין להפוך אותם לקוד פעיל.
 - מטריצת הכיסוי הסמנטי של חומרי React/IMUD/Gold מול בדיקות RED מתועדת ב-`spec/IMPORT_FIXTURE_SEMANTIC_COVERAGE.md`; היא אינה מחברת את חומרי הארכיון ל-CI.
 - מיפוי חוזי Yellow מול EventLog/Ledger/diagnostics-v2 מתועד ב-`spec/YELLOW_DIAGNOSTICS_CONTRACT_GAP.md`; הוא אינו מייבא או מריץ את מודולי המקור.
+- שיטת Step-by-Step Audit ל-RED מתועדת ב-`spec/step-by-step-audit-Method.md`; מסמך Gold המקורי נשאר ב-archive ואינו מקור runtime.
 - סוויטת IMUD: baseline הנעול מכיל **38 רשומות scenario**. ה-README המקורי אומר 21 — נתון stale ביחס ל-baseline בקומיט המקור הנעול. לא שינינו את המקור; תיעדנו את הסתירה ב-README הארכיוני.
 - הייבוא אינו מעיד שכל חמשת המאגרים ההיסטוריים הועברו בשלמותם. זהו ארכיון ממוקד של רכיבים, תיעוד, harnesses ו-fixtures שנבחרו; יתר הקבצים/היסטוריית הריפו לא הועתקו.
 
@@ -133,7 +134,7 @@
 1. **Makom Bina v20.5 — הושלם ומאומת:** קבוצת preset מבודדת, picker, מקור/גרסה, preview והחלה מפורשת כבר קיימים. ארבעת קובצי הנתונים נטענים בנתיב הצפוי; בדיקת integration תוקנה ב-`31e7b4c`, וכל ארבעת ה-workflows עברו על HEAD `0d8dae7b`. לא שונתה ברירת מחדל או אחת משלוש הערכות הרגילות.
 2. **React/IMUD/Gold — סקר סמנטי ראשון הושלם:** ראו `spec/IMPORT_FIXTURE_SEMANTIC_COVERAGE.md`. הקבצים הישנים נשארים ארכיון; רק מועמדים לפער ייהפכו לנגזרות RED לאחר בדיקת תחביר ו-D-100.
 3. **Gold source syntax:** התחביר `כותרת N מספר K - ...` אינו מזוהה על ידי ה-lexer של RED, המקבל `כותרת N - ...`. בקובץ `test-all-triggers.txt` נמצא גם רצף כותרות H3 ללא גוף. לכן אין להריץ/לייבא את המקור ישירות.
-4. **Step-by-step audit:** נותר פער של snapshots/deltas מלאים של רכיבי העמוד והאחים בחלון issue-centric. להתחיל במיפוי שדות וב-reducer טהור על אירועי RED; אין ליצור trace שני.
+4. **Step-by-step audit:** נותר פער מימוש של snapshots/deltas מלאים בחלון issue-centric. שיטת העבודה, רף הסיבתיות ואפשרויות הכיוונון מפורטים ב-`spec/step-by-step-audit-Method.md`; יש להתחיל ב-reducer טהור על מודל RED.
 5. **Yellow diagnostics:** השוואת schema שדה-מול-שדה הושלמה ב-`spec/YELLOW_DIAGNOSTICS_CONTRACT_GAP.md`. מודולי המקור נשארים ארכיון; היישום העתידי יוגבל לשדות חסרים שהוכחו ולמערכת EventLog/Ledger היחידה.
 6. **Screenshot PDF:** ה-helper של Green אינו תואם ל-`diagnostics-v2`, כולל החרגות DOM קשיחות ומניח manifest שאינו נוצר כיום ב-RED. לא תיכתב שכבת PDF לפני producer/manifest של RED.
 7. **React/Kotlin/Rust:** תיעוד, ADRs וחוזי מקור נשמרו בארכיון; אין הצדקה להעתיק runtime זר לשפת/ארכיטקטורת RED.

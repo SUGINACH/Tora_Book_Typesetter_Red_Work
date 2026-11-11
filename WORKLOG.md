@@ -2987,3 +2987,25 @@ PR #6 נשאר פתוח מול `main`, לא מוזג, ו-GitHub דיווח `merg
 6. תצוגת issue-centered ב-Testing Tab לאחר ייצוב הסכמה.
 
 אין להוסיף Yellow runtime, global monkey-patching או DOM snapshots. אין שינוי parser/DP/renderer/Worker בסשן זה; מסמכי המקור וה-fixtures נשארו בלתי משתנים.
+
+
+## Session 13 — שיטת RED ל-Step-by-Step Audit (11.11.2026)
+
+### 1. אימות source/bundle
+- שינוי trace capture metadata הוכנס ב-`69a80232e3fe7a70fb564eb047c833ec7df7584e`.
+- `rebuild-worker-bundles` רץ בהצלחה על source commit זה ויצר commit אוטומטי `fdcdfda350b0beb2b766810dc2de1ede22eec9ea` עם עדכון `red-build/ui/app.bundle.js` ו-`red-build/ui/engine-worker.bundle.js`.
+- ארבעת ה-workflows שהופעלו בעקבות commit הבוט סומנו `action_required` (43048913770, 43048913567, 43048914001, 43048913900). אין להציג זאת כהצלחה או ככשל בדיקה; נדרשת פעולת אישור GitHub כדי שהריצות יתחילו.
+
+### 2. מסמך שיטה חדש
+נוצר `spec/step-by-step-audit-Method.md` כמפרט RED עצמאי, נפרד מהשיטה הארכיונית של Gold. הוא כולל:
+- זהות ריצה, checkpoint, עמוד ואלמנט;
+- מלאי מלא של כל האלמנטים בעמוד הממצא;
+- delta של added/removed/moved/resized/restyled/reparented/split/merged;
+- issue windows עם before/after, ניסיונות תיקון, side effects ו-Ledger lifecycle;
+- רף ראיות נפרד ל-created-by-stage, correction-blocked, correction-reverted, became-observable-later ו-competing-repair-side-effect;
+- הבחנה בין status של issue, delta של element ו-kind של finding;
+- אפשרויות כיוונון כאשר הסיבה אינה מתגלה, תוך הרחבה מדורגת ומדידת completeness;
+- קריטריוני קבלה ותקציב ביצועים.
+
+### 3. גבול ביצוע
+זהו מפרט, לא מימוש מלא. לא נוספו עדיין checkpoints למנוע ולא נוצר reducer. השלב הבא הוא reducer טהור על snapshots/deltas סינתטיים, לפני instrumentation במנוע. אין DOM snapshots, global monkey-patching או rerun היסטורי.
