@@ -389,7 +389,7 @@
 
 ---
 
-**סטטוס נכון ל-11.11.2026:** reducer טהור קיים בנתיב red-build/src/engine/audit/step-audit-reducer.js, ובדיקותיו בנתיב red-build/tests/unit/step-audit-reducer.test.js. הוא נכלל ב-npm test וב-test:unit, ומקבל snapshots סינתטיים במבנה מנורמל. הוא עדיין אינו מחובר ל-pipeline, ל-Ledger או ל-Worker; אין עדיין adapter שמפיק snapshots מתוך מודל העמוד האמיתי, ואין instrumentation של checkpoints במנוע. לכן זו תשתית שנבדקת ביחידות, לא Step-by-Step Audit פעיל של מסמך אמיתי.
+**סטטוס נכון ל-12.11.2026:** reducer טהור קיים ב-red-build/src/engine/audit/step-audit-reducer.js; adapter למודל העמוד האמיתי קיים ב-red-build/src/engine/audit/step-audit-model-adapter.js. שניהם נכללים ב-npm test וב-test:unit. ה-adapter מפיק normalized checkpoint מתוך אובייקטי RED קיימים, עם page identity תחומה לריצת adapter, line-seq ו-token/fragment identities, מלאי גאומטרי של רכיבים, Ledger mapping שמרני ו-completeness reasons. נוסף גם מסלול ממוקד ל-parenthesis ranges: DP משמר lineIdx, מיפוי source-word refs עוקב אחר מילים שעברו drop-word repair, וה-pipeline מריץ מחדש רק את predicate של parenConsistency אחרי יצירת הטווחים. עם זאת, אין עדיין producer כללי של checkpoints בכל שלבי pipeline/Worker, אין קישור operation מלא לכל פעולות התיקון, ואין UI issue-centered ב-Testing Tab. לכן המנגנון המלא עדיין אינו Step-by-Step Audit כללי של מסמך אמיתי; יש adapter פעיל לבדיקה ומסלול סוגריים ממוקד בלבד.
 
 
 ## 14. מצב המימוש הראשון — Pure reducer
@@ -416,3 +416,50 @@
 - תוצאות unit tests אינן תחליף ל-no-op proof, ל-Worker integration או לבדיקת stress מלאה.
 
 השלב הבא הוא למפות את מודל העמוד וה-Ledger הקיימים לשדות החוזה, ולזהות אילו מזהים כבר קיימים ואילו מחייבים יצירה סמנטית. רק לאחר המיפוי יוגדר adapter. אין להוסיף instrumentation לפני שה-adapter וה-reducer מוכחים בנפרד.
+
+
+## 15. עדכון מימוש — 12.11.2026
+
+### 15.1 Adapter ממודל RED
+נוסף red-build/src/engine/audit/step-audit-model-adapter.js, עם בדיקות ב-red-build/tests/unit/step-audit-model-adapter.test.js. המודול מבודד ואינו משנה את ה-pipeline בעצם טעינתו. הוא מקבל pages, settings, Ledger, evaluatedKindsByPage ו-projectedPages או פונקציית projection אופציונלית, ומפיק checkpoint מנורמל לרדוסר.
+
+זהויות:
+- pageId נוצר מ-WeakMap של אובייקט העמוד, בתחום חיי adapter/run. שינוי אינדקס או סדר העמודים אינו משנה את הזהות כל עוד אובייקט העמוד נשמר.
+- שורת גוף מזוהה לפי seq של DP בתוך הריצה; fragment של paragraph לפי pageId+tokenId.
+- footnote/endnote fragment מקבל זהות יציבה רק עם tokenId, noteIndex ו-fragmentIndex; מזהה חסר מסומן incomplete.
+- decoration ללא rollbackKey/tokenId, side note ללא source token, או target Ledger שאינו ניתן למיפוי חד-משמעי אינם מקבלים זהות מומצאת. ה-capture מסומן incomplete/unmapped.
+- evaluatedKinds חייב להיות מוגדר במפורש לכל עמוד. מערך ריק פירושו שה-predicate set נבדק ולא מצא ממצא; מפתח חסר פירושו שלא ניתן להשוות.
+
+### 15.2 כיסוי רכיבי עמוד
+ה-adapter כולל line/paragraph fragments, columns, spanning H2–H6 bands, footnote area/fragments/rules, side notes, ornaments/decorations, column divider, endnote pages/fragments/title, TOC rows/items, custom boxes/images/background, folio/header slots ו-shaar content לפי projection. רכיב שגובה או מלבן שלו אינו קיים במודל (כגון header separator המבוסס CSS) נשמר כממצא חסר-גאומטריה וה-capture מסומן incomplete; אין יצירת גובה או מלבן שרירותיים.
+
+### 15.3 מסלול סוגריים ממוקד
+נמצאו שני פערים שהסתירו את ממצאי הסוגריים:
+1. ה-DP לא כתב meta.lineIdx לשורות רגילות, ולכן ה-pipeline לא הצליח למפות את טווחי המקור למיקומים בפועל.
+2. לאחר יצירת parenRanges, בדיקת parenConsistency לא רצה שוב; לכן ה-Ledger לא קיבל את הממצא.
+
+התיקון:
+- DP משמר block-local lineIdx בעת הצבת שורות, לרבות spanning headings.
+- ה-pipeline מחשב parenSpans גם כאשר paren-style-scale=1. הסקייל עדיין קובע רק אם PAREN_SENTINEL משפיע על המדידה; בדיקת הגבול המבנית אינה תלויה בו.
+- לכל מילה בטווח שניתן למיפוי מוצמד sourceWordRef={tokenId,wordIndex}. ה-reference מועבר יחד עם מילה ש-fixDropWordInColumns מעביר לשורה הבאה. לכן אין הסתמכות על lineIdx בלבד לאחר תיקון שורה.
+- לאחר יצירת page.parenRanges, ה-pipeline מריץ פעם אחת רק את CHECKS.parenConsistency; הוא אינו מריץ שוב את שאר ההגנות ואינו משנה גאומטריה.
+- ה-Ledger target בפועל הוא paren@pN@tN; ה-adapter מזהה אותו במדויק ומקשר אותו לאלמנט סמנטי paren-range.
+
+כאשר יש note-ref שמשלב מילים חיצוניות, או שמספר המילים לאחר עיבוד שונה ממספר מילות המקור, המיפוי נדחה ונרשם paren-range-unmapped. זה מכוון: אין התאמה משוערת.
+
+### 15.4 בדיקות חדשות
+- התאמת Ledger target בפורמט האמיתי paren@pN@tN.
+- E2E של טווח סוגריים ארוך החוצה טורים/עמודים, כולל קישור ממצא ה-Ledger לטווח.
+- E2E נוסף כאשר paren-style-scale=1 כדי לוודא שההגנה המבנית אינה תלויה בעיצוב.
+- בדיקת העברת sourceWordRefs בעת drop-word repair.
+- בדיקות גבול ל-TOC groups, endnote title band, note fragment identities, evaluatedKinds ו-divider ink bounds.
+
+### 15.5 גבולות שעדיין פתוחים
+- אין עדיין אוסף checkpoints אוטומטי מכל שלבי pipeline; ה-adapter מוכן לצריכה אך דורש caller שיספק את page model וה-predicate coverage של אותו שלב.
+- אין operationId אחיד שנקשר לכל mutation בכל שלב ה-DP/retreat/repair.
+- split/merge של fragment שחוצה עמודים דורש lineage ברמת checkpoint; לא מסיקים אותו מטקסט.
+- header separator ואלמנטים המבוססים CSS נשארים incomplete עד שמודל המקור יספק מלבן מדויק.
+- אין UI issue-centered ואין stress/full-corpus audit של כל checkpoint; בדיקות הקורפוס הקיימות בודקות את העימוד, לא את כל היסטוריית הממצאים.
+- module adapter אינו מיובא על ידי ה-renderer/Worker bundle כנתיב runtime פעיל, והוספתו לא משנה layout.
+
+השלב הבא: producer טהור שמקבל snapshots אמיתיים בנקודות pipeline מוגדרות ומספק evaluatedKinds/operation linkage, עם no-op hash proof. רק אחרי שהחוזה מוכח יתווסף opt-in instrumentation; UI יישאר לאחר מכן.

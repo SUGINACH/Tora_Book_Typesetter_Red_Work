@@ -147,3 +147,15 @@
 - reducer אינו מחובר ל-pipeline ואינו משפיע על layout. אין עדיין adapter שמפיק מזהי page/element יציבים מה-page model האמיתי.
 - המשימה הבאה: מיפוי page/column/line/note model ו-Ledger; כתיבת adapter טהור ובדיקות adapter; לאחר מכן operation/checkpoint linkage; לבסוף instrumentation opt-in ו-Testing Tab issue-centered.
 - CI על HEAD 2bfb7245 הופעל מחדש; תוצאותיו מתועדות ב-WORKLOG ורק לאחר conclusion ניתן לסמן שערים כעוברים.
+
+
+## 10. Step-Audit status — 12.11.2026 (supersedes Step-Audit item in §8.4)
+
+The pure reducer and RED model adapter are implemented and covered by unit tests. A focused parenthesis path is now connected after DP placement:
+- meta.lineIdx is stamped on DP placed lines;
+- per-word provenance refs follow words through drop-word repair;
+- parenthesis ranges are built from final placed word locations;
+- only the parenthesis boundary predicate is re-run after range creation;
+- the real Ledger target paren@pN@tN maps to a semantic paren-range element.
+
+No general all-stage checkpoint instrumentation is active. No all-mutation operationId linkage or issue-centered Testing Tab view exists yet. The next Step-Audit task is the pure checkpoint producer/caller contract (page model + evaluatedKinds + Ledger snapshot + operation metadata), followed by opt-in capture and no-op geometry/hash proof. Do not infer missing source identities, and do not add DOM measurements.

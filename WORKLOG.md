@@ -3050,3 +3050,40 @@ PR #6 נשאר פתוח מול `main`, לא מוזג, ו-GitHub דיווח `merg
 5. UI issue-centered נשאר לאחר ייצוב schema.
 
 אין שינוי parser, DP, typography, renderer או ברירות מחדל בסשן זה. כל חומרי הארכיון נשארו בלתי משתנים. P6/P7 נשארים מחוץ לתחום.
+
+
+## Session 15 — חיבור מיפוי סוגריים ושימור מקור מילה (12.11.2026)
+
+### 1. מצב הענף וה-PR
+העבודה נמשכה ב-work/reference-intent-clarification; PR #6 נשאר פתוח ולא מוזג. ה-HEAD בעת כתיבת עדכון זה הוא 00eeb8546eb79fdcc2c5f3ff2a7252c5ed3118ee. אין מיזוג ל-main ואין שינוי לריפו RED המקורי.
+
+### 2. תיקון target בפורמט Ledger בפועל
+ה-Ledger יוצר target מסוג paren@pN@tN מתוך p.id. ה-adapter זיהה קודם רק pN@tN; זה תוקן ב-commit 6d34c38f. בדיקת היחידה וה-E2E עודכנו לצורת target האמיתית.
+
+### 3. שימור מקור מילים אחרי תיקון שורה
+נוסף ב-commit 99249ef8:
+- pipeline.js מצמיד sourceWordRefs רק לפסקאות עם טווחי סוגריים שמספר מילותיהן לאחר שבירת שורות תואם במדויק למילות המקור.
+- fixDropWordInColumns מעביר את ה-references יחד עם המילה שעוברת לשורה הבאה.
+- מיפוי טווח הסוגריים לאחר DP מחפש את מילות ההתחלה והסיום לפי tokenId+wordIndex, ולא מניח שהמילה עדיין בשורה המקורית.
+- ה-references אינם משתתפים ב-layoutHash או bodyGeometryHash; אין שינוי במדידה, שבירת שורות, איזון או renderer.
+- parenSpans מחושבים גם כאשר paren-style-scale=1. הסקייל עדיין שולט רק בהשפעת sentinel על המדידה; עצם ההגנה המבנית אינה תלויה בו.
+
+### 4. תיקון בדיקת CI
+ב-HEAD 6d34c38f וב-HEAD 99249ef8:
+- layout-invariants עבר.
+- rebuild-worker-bundles עבר.
+- full-math-audit עבר/נשאר בתהליך לפי הריצה המתאימה.
+- CI נכשל ב-test shard אחד בלבד בבדיקת marks note/decoration object-only identities incomplete. סיבת הכשל: בדיקת היחידה ציפתה ל-reason כללי, בעוד שהקוד דורש גם fragmentIndex ומחזיר footnote-fragment-without-stable-source-id-or-fragment-index. זו אי-התאמה בציפיית הבדיקה, לא כשל בעימוד.
+- תיקון הציפייה הועלה ב-commit 00eeb854; יש לוודא CI מלא ושאר ה-workflows על HEAD אחד.
+
+### 5. גבול המימוש הנוכחי
+קיים reducer טהור, קיים adapter למודל RED, וקיים מסלול runtime ממוקד לבדיקת גבולות סוגריים. עם זאת, אין עדיין producer כללי ששומר checkpoints בכל שלבי pipeline, אין operationId אחיד לכל שינויי ה-DP/retreat, ואין UI issue-centered. ה-adapter דורש caller שיספק evaluatedKinds מפורש לכול עמוד; בהיעדרו capture מסומן incomplete.
+
+### 6. שלב העבודה הבא
+1. להשלים CI אחרי תיקון ציפיית הבדיקה ולוודא שכל ארבעת ה-workflows עברו על HEAD אחד.
+2. לבנות pure checkpoint producer על fixtures מסוריאלזים של RED, עם Ledger ותוצאת predicate coverage מפורשים.
+3. לבדוק שה-snapshots זהים בין שתי ריצות וש-no-op capture משאיר layoutHash/bodyGeometryHash ללא שינוי.
+4. רק לאחר מכן לחבר checkpoints אופציונליים לנקודות pipeline/DP, ולתעד operation IDs.
+5. UI issue-centered יישאר מחוץ לשלב זה.
+
+P6/P7 אינם בשימוש כקריטריוני קבלה; לא שונו parser, KP/DP line-breaking, typography או page-balancing decisions. כל חומרי archive נשארו ללא שינוי.

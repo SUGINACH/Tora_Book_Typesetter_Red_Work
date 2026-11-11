@@ -185,3 +185,16 @@ The field-by-field comparison is recorded in `spec/YELLOW_DIAGNOSTICS_CONTRACT_G
 - ביקורת סיבתיות הידקה את הדרישה ל-active→absent→active עבור correction-reverted, ול-sibling delta + capacity change עבור competing-repair-side-effect.
 - עדיין אין adapter מה-page model האמיתי, ואין checkpoints במנוע. ה-Ledger הנוכחי מספק page מספרי ו-target טקסטואלי; יש למפות אותם בזהירות ולא להציגם כמזהי page/element יציבים.
 - ה-reducer אינו משנה את ה-layout, אינו נקרא מה-pipeline ואינו רץ על טקסטי הארכיון.
+
+
+## 10. Implementation status — 12.11.2026 (supersedes earlier planned sequence)
+
+- Pure reducer implemented: red-build/src/engine/audit/step-audit-reducer.js.
+- RED model adapter implemented and unit-tested: red-build/src/engine/audit/step-audit-model-adapter.js.
+- Adapter maps live page objects, columns, line seqs, footnote/endnote fragments, side notes, decorations, dividers, TOC/custom/shaar elements, header/folio projection and Ledger records. Missing source identity or geometry is surfaced as incomplete; it is not guessed.
+- Parenthesis mapping now has a focused runtime path: DP line indexes, per-word source refs, source refs carried through drop-word repair, semantic paren range elements and a post-map-only parenConsistency check.
+- The actual Ledger target is paren@pN@tN; matching this exact prefix is covered by unit and E2E tests.
+- The generic all-stage checkpoint producer, operationId linkage across every mutation, reducer integration for a full real run, Testing Tab UI and full audit stress test remain open.
+- The current changes do not change line breaking, page balancing, measurement or renderer geometry. The added source-word identity is omitted from layout/body geometry hashes.
+
+The next safe step is a pure checkpoint producer over serialized RED page-model fixtures, then opt-in checkpoint capture with a no-op hash proof. Do not start a UI implementation before capture completeness and operation/issue linkage are proven.
