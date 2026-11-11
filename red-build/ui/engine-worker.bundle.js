@@ -5804,7 +5804,25 @@ class EventLog {
   }
 
   toTraceV2() {
-    return { schema: 'trace-v2', droppedEvents: this.droppedEvents, events: this.events.slice() };
+    const recording = this.verbosity !== 'off';
+    const omittedFields = [];
+    if (!recording) omittedFields.push('events');
+    else {
+      if (this.verbosity === 'minimal') omittedFields.push('payload');
+      if (this.verbosity !== 'full') omittedFields.push('pageIndex');
+    }
+    return {
+      schema: 'trace-v2',
+      capture: {
+        recording,
+        verbosity: this.verbosity,
+        eventStreamComplete: recording && this.droppedEvents === 0,
+        droppedEvents: this.droppedEvents,
+        omittedFields
+      },
+      droppedEvents: this.droppedEvents,
+      events: this.events.slice()
+    };
   }
 }
 
@@ -11621,7 +11639,7 @@ function serializeTypesetResult(result) {
     settings: result.settings,
     pages: result.pages,                 // עצמים פשוטים (columns/lines/template) — ניתנים להעברה
     report,                              // findings + counts + retreat (plain)
-    trace: result.events.toTraceV2(),    // events: [{seq,stage,label,pageIndex,ts,payload}]
+    trace: result.events.toTraceV2(),    // capture: recording/verbosity/completeness; events: [{seq,stage,label,pageIndex,ts,payload}]
     ledger: result.ledger.toSchemaV2(),  // issues: [...] (lifecycle מלא)
     ledgerSummary: result.ledger.summary(),
     toc: result.toc,
