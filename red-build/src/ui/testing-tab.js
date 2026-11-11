@@ -144,6 +144,18 @@ function buildTestingTab(doc, opts) {
   root.appendChild(traceSec);
 
   let traceEvents = [];
+  let traceCapture = null;
+  function traceCaptureSummary() {
+    if (!traceCapture) return 'מצב איסוף לא ידוע (trace קודם/ישן)';
+    if (!traceCapture.recording) return 'איסוף trace כבוי — רשימה ריקה אינה הוכחה שלא התקבלו החלטות';
+    const mode = `איסוף פעיל (${traceCapture.verbosity})`;
+    const completeness = traceCapture.eventStreamComplete
+      ? 'רצף האירועים שלם לפי רמת הפירוט שנבחרה'
+      : `רצף אירועים חלקי (${traceCapture.droppedEvents || 0} אירועים נדחו)`;
+    const omitted = Array.isArray(traceCapture.omittedFields) && traceCapture.omittedFields.length
+      ? ` · הושמטו במכוון: ${traceCapture.omittedFields.join(', ')}` : '';
+    return `${mode} · ${completeness}${omitted}`;
+  }
   function renderTrace() {
     const stage = stageSel.value;
     ttBody.textContent = '';
@@ -164,7 +176,7 @@ function buildTestingTab(doc, opts) {
       }
       ttBody.appendChild(tr);
     }
-    traceMeta.textContent = `${shown} אירועים מוצגים מתוך ${traceEvents.length}`;
+    traceMeta.textContent = `${shown} אירועים מוצגים מתוך ${traceEvents.length} · ${traceCaptureSummary()}`;
   }
   stageSel.addEventListener('change', renderTrace);
 
@@ -187,6 +199,7 @@ function buildTestingTab(doc, opts) {
 
     // שלבי המסלול הקיימים → בורר
     traceEvents = (serializedResult.trace && serializedResult.trace.events) || [];
+    traceCapture = (serializedResult.trace && serializedResult.trace.capture) || null;
     const stages = [...new Set(traceEvents.map(e => e.stage))];
     stageSel.textContent = '';
     {

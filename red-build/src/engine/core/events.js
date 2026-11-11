@@ -40,7 +40,25 @@ class EventLog {
   }
 
   toTraceV2() {
-    return { schema: 'trace-v2', droppedEvents: this.droppedEvents, events: this.events.slice() };
+    const recording = this.verbosity !== 'off';
+    const omittedFields = [];
+    if (!recording) omittedFields.push('events');
+    else {
+      if (this.verbosity === 'minimal') omittedFields.push('payload');
+      if (this.verbosity !== 'full') omittedFields.push('pageIndex');
+    }
+    return {
+      schema: 'trace-v2',
+      capture: {
+        recording,
+        verbosity: this.verbosity,
+        eventStreamComplete: recording && this.droppedEvents === 0,
+        droppedEvents: this.droppedEvents,
+        omittedFields
+      },
+      droppedEvents: this.droppedEvents,
+      events: this.events.slice()
+    };
   }
 }
 
