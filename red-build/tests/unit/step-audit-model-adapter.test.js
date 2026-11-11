@@ -312,7 +312,7 @@ describe('StepAudit RED model adapter', () => {
       evaluatedKindsByPage: { 'page-object-1': [] }
     });
     assertEq(snap.capture.complete, false);
-    assert(snap.capture.reasons.includes('footnote-fragment-without-stable-source-id'));
+    assert(snap.capture.reasons.includes('footnote-fragment-without-stable-source-id-or-fragment-index'));
     assert(snap.capture.reasons.includes('decoration-without-stable-source-id'));
   });
 
