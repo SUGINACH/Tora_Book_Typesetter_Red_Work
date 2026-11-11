@@ -364,11 +364,12 @@ function createStepAuditModelAdapter(options = {}) {
             const h = Number(note.heightPx) || pitch;
             const tokenId = note.tokenId != null ? String(note.tokenId) : null;
             const noteIndex = Number.isInteger(note.noteIndex) ? note.noteIndex : null;
-            const stableNoteKey = tokenId && noteIndex != null
-              ? [tokenId, noteIndex, note.part || '', note.mode || '', note.continuationOf || '', note.isContinuation ? 'continuation' : 'base'].join(':')
+            const fragmentIndex = Number.isInteger(note.fragmentIndex) ? note.fragmentIndex : null;
+            const stableNoteKey = tokenId && noteIndex != null && fragmentIndex != null
+              ? [tokenId, noteIndex, note.part || '', fragmentIndex].join(':')
               : null;
             const objectId = stableNoteKey || objectIdOf(note, 'footnote-fragment');
-            if (!stableNoteKey) incomplete('footnote-fragment-without-stable-source-id');
+            if (!stableNoteKey) incomplete('footnote-fragment-without-stable-source-id-or-fragment-index');
             addElement(elements, {
               elementId: 'footnote-fragment:' + objectId,
               role: 'footnote-fragment',
@@ -380,7 +381,7 @@ function createStepAuditModelAdapter(options = {}) {
               attributes: {
                 marker: note.marker || null, noteIndex, mode: note.mode || null,
                 isContinuation: !!note.isContinuation, continuationOf: note.continuationOf || null,
-                lane: li, part: note.part || null
+                fragmentIndex, lane: li, part: note.part || null
               },
               style: { customStyle: note.customStyle || null },
               textDigest: digestText(note.text || '')

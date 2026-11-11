@@ -92,7 +92,7 @@ describe('StepAudit RED model adapter', () => {
 
   it('includes footnotes, side notes, ornaments and divider geometry in the page inventory', () => {
     const adapter = createStepAuditModelAdapter();
-    const footnote = { tokenId: 't3', noteIndex: 0, marker: '*', text: 'ביאור', heightPx: 32, lineH: 16 };
+    const footnote = { tokenId: 't3', noteIndex: 0, fragmentIndex: 0, marker: '*', text: 'ביאור', heightPx: 32, lineH: 16 };
     const sideNote = { ownToken: 't4', anchorToken: 't5', text: 'צד', x: 745, yTop: 90, colWidth: 45, heightPx: 30 };
     const ornament = { kind: 'h2-ornament', slot: 'h2-top', kindStyle: 'plain', rollbackKey: 'h2-top:t1', x: 100, y: 40, w: 20, h: 10 };
     const page = makePage(0, [
@@ -117,7 +117,7 @@ describe('StepAudit RED model adapter', () => {
 
   it('matches model-projected ink bounds for double column rules and diamond footnote rules', () => {
     const adapter = createStepAuditModelAdapter();
-    const note = { tokenId: 't3', noteIndex: 0, marker: '*', text: 'ביאור', heightPx: 32, lineH: 16 };
+    const note = { tokenId: 't3', noteIndex: 0, fragmentIndex: 0, marker: '*', text: 'ביאור', heightPx: 32, lineH: 16 };
     const page = makePage(0, [
       [line(1, 't1', 'גוף')], [line(2, 't2', 'גוף נוסף')]
     ], { footnotes: [note], fnReservedHeightPx: 32 });
@@ -243,6 +243,31 @@ describe('StepAudit RED model adapter', () => {
     assertEq(snap.issues[0].mapStatus, 'mapped');
     assertEq(snap.issues[0].targetElementId, 'paren-range:page-object-1:p1@t7');
     assertEq(snap.checkpoint.pages[0].elements.filter((element) => element.role === 'paren-range').length, 1);
+  });
+
+  it('assigns unique stable fragment IDs to successive pieces of one split footnote', () => {
+    const adapter = createStepAuditModelAdapter();
+    const first = {
+      tokenId: 't55', noteIndex: 0, fragmentIndex: 0, part: 1, mode: 'split-first',
+      marker: '*', text: 'תחילת הערה', heightPx: 30, lineH: 15
+    };
+    const rest = {
+      tokenId: 't55', noteIndex: 0, fragmentIndex: 1, part: 1, mode: 'split-first',
+      isContinuation: true, continuationOf: 't55',
+      marker: '*', text: 'המשך הערה', heightPx: 30, lineH: 15
+    };
+    const pageA = makePage(0, [[], []], { footnotes: [first], fnReservedHeightPx: 30 });
+    const pageB = makePage(1, [[], []], { footnotes: [rest], fnReservedHeightPx: 30 });
+    const snap = adapter.snapshot({
+      pages: [pageA, pageB], stage: 'notes-budget', seq: 1, settings: {},
+      evaluatedKindsByPage: { 'page-object-1': [], 'page-object-2': [] }
+    });
+    const fragments = snap.checkpoint.pages.flatMap((page) => page.elements.filter((element) => element.role === 'footnote-fragment'));
+    assertEq(fragments.map((element) => element.elementId), [
+      'footnote-fragment:t55:0:1:0',
+      'footnote-fragment:t55:0:1:1'
+    ]);
+    assertEq(snap.capture.complete, true);
   });
 
   it('does not map an opaque parenthetical target to page-flow', () => {
