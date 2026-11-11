@@ -189,6 +189,9 @@ describe('S7.1.5/6 Gate — marker style × reset policy matrix', () => {
     const block = mk('block');
     assert(block.contentPreserved === true, 'block mode preserves');
     assert(block.pages.some(p => p.footnotes.some(n => n.isContinuation)), 'block → clamp active → split segments');
+    const splitParts = block.pages.flatMap((page) => page.footnotes).filter((note) => note.tokenId && note.noteIndex === 0);
+    assert(splitParts.every((note) => Number.isInteger(note.fragmentIndex)), 'each split fragment has an explicit fragmentIndex');
+    assertEq(splitParts.map((note) => note.fragmentIndex), splitParts.map((_, index) => index), 'split fragment indices are contiguous and unique');
     const cont = mk('continuous');
     assert(cont.contentPreserved === true, 'continuous mode preserves');
     assert(!cont.pages.some(p => p.footnotes.some(n => n.isContinuation || n.mode === 'split-first')), 'continuous → no clamp → no split');

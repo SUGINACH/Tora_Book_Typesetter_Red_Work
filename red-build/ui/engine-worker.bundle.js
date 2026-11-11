@@ -1,6 +1,6 @@
 // ui/engine-worker.bundle.js — **נוצר אוטומטית** ע"י tools/build-worker-bundle.js (אין לערוך ידנית)
 // חבילת ה־Worker (המנוע המלא — אין לטעון בחוט ה־UI)
-// מודולים: 63 · בלי חותמות זמן (דטרמיניזם)
+// מודולים: 64 · בלי חותמות זמן (דטרמיניזם)
 'use strict';
 
 var __crypto = (function () {
@@ -300,6 +300,7 @@ var __paths = {
   "src/engine/core/pipeline.js|./settings-registry": "src/engine/core/settings-registry.js",
   "src/engine/core/pipeline.js|../parser/dfa-lexer": "src/engine/parser/dfa-lexer.js",
   "src/engine/core/pipeline.js|../parser/block-tokenizer": "src/engine/parser/block-tokenizer.js",
+  "src/engine/core/pipeline.js|../parser/document-structure": "src/engine/parser/document-structure.js",
   "src/engine/core/pipeline.js|../parser/bracket-scanner": "src/engine/parser/bracket-scanner.js",
   "src/engine/core/pipeline.js|../typography/measure-api": "src/engine/typography/measure-api.js",
   "src/engine/core/pipeline.js|../typography/protectors": "src/engine/typography/protectors.js",
@@ -329,8 +330,10 @@ var __paths = {
   "src/engine/core/pipeline.js|../decoration/folio": "src/engine/decoration/folio.js",
   "src/engine/core/pipeline.js|../decoration/headers-builder": "src/engine/decoration/headers-builder.js",
   "src/engine/core/pipeline.js|../decoration/toc-builder": "src/engine/decoration/toc-builder.js",
+  "src/engine/core/pipeline.js|../layout/protections-matrix": "src/engine/layout/protections-matrix.js",
   "src/engine/parser/block-tokenizer.js|./dfa-lexer": "src/engine/parser/dfa-lexer.js",
   "src/engine/parser/block-tokenizer.js|./bracket-scanner": "src/engine/parser/bracket-scanner.js",
+  "src/engine/parser/document-structure.js|./bracket-scanner": "src/engine/parser/bracket-scanner.js",
   "src/engine/typography/measure-api.js|./measure-table": "src/engine/typography/measure-table.js",
   "src/engine/typography/measure-api.js|./font-metrics": "src/engine/typography/font-metrics.js",
   "src/engine/typography/measure-api.js|./kp-linebreak": "src/engine/typography/kp-linebreak.js",
@@ -571,6 +574,7 @@ __modules["src/engine/core/pipeline.js"] = function (require, module, exports) {
 const { getDefaultSettings, derivePlacementFlags } = require('./settings-registry');
 const { lexDocument } = require('../parser/dfa-lexer');
 const { tokenize, contentHash, normalizeText } = require('../parser/block-tokenizer');
+const { assertHeadingStructure } = require('../parser/document-structure');
 const { scanBrackets } = require('../parser/bracket-scanner');
 const { MeasureAPI, resolveMeasureImpl } = require('../typography/measure-api');
 const { protectWords } = require('../typography/protectors');
@@ -660,11 +664,22 @@ function offsetInSpans(at, spans) {
  *   אסור לו לגעת בפריסה — no-op proof נאכף בבדיקה (hash זהה עם ובלי המזליף).
  */
 function typeset(rawText, settingsIn, env = {}) {
-  // **S4.9 (פרופיל העימוד המקורי):** הגדרות שמקורן ב-default_settings.json של
-  // התוכנה המקורית (importImudSettings מסמן layout-profile='imud' ומצרף
-  // את ה-JSON הגולמי) ⇒ הפעלת הפורט הנאמן של מנוע המקור. התנהגות המקור
-  // היא המפרט — כולל הגיאומטריה המדויקת שנמדדה מקובצי הייחוס שהעלה המשתמש
-  // (בקשת 03.11: "בדיקת עימוד מתמטית ומוחלטת דרך וורקפלו").
+  // D-100: reject malformed heading structure before either the DP or legacy layout path.
+  // This is source validation, not a pagination heuristic or an automatic repair.
+  const structuralParseOpts = {
+    endnotePrefix: settingsIn && settingsIn['en-line-prefix'],
+    fnOpen: settingsIn && settingsIn['fn-delim-open'],
+    fnClose: settingsIn && settingsIn['fn-delim-close']
+  };
+  const structuralBody = lexDocument(String(rawText == null ? '' : rawText), structuralParseOpts).bodyLines;
+  const structuralTokens = tokenize(structuralBody, structuralParseOpts);
+  assertHeadingStructure(structuralTokens, structuralParseOpts);
+
+  // **S4.9 (פרופיל IMUD/Legacy):** הגדרות שיובאו מ-default_settings.json של
+  // התוכנה המקורית (importImudSettings מסמן layout-profile='imud' ומצרף את
+  // ה-JSON הגולמי) מפעילות את נתיב התאימות Legacy/IMUD. הנתיב משמר את
+  // סמנטיקת ההגדרות וההתנהגות ההיסטורית של הייבוא; קובצי ה-PDF הישנים
+  // נשארים דוגמאות המחשה/אבחון בלבד ואינם מפרט גיאומטרי או יעד קבלה ל-RED.
   if (settingsIn && settingsIn['_layout-profile'] === 'imud' && settingsIn._imudRaw) {
     const { legacyTypeset } = require('../layout/legacy-imud-flow');
     return legacyTypeset(rawText, settingsIn, env);
@@ -929,7 +944,7 @@ function typeset(rawText, settingsIn, env = {}) {
     // text from which flatBody was built — a shared running index (exact, no searches).
     const textParts = t.parts.filter(p => p.kind === 'text');
     const flatBody = textParts.map(p => p.value).join(' ');
-    const parenSpans = parenScale !== 1 ? parenSpansOfFlat(flatBody) : [];
+    const parenSpans = parenSpansOfFlat(flatBody);
     const flatWordOffsets = [];
     {
       let cum = 0;
@@ -1102,6 +1117,14 @@ function typeset(rawText, settingsIn, env = {}) {
       // המונה מוצג בשורה הראשונה של הבלוק (הפס של full-width מטופל ברנדרר מהמידע על הפס)
       if (csInfo.counterMark && lines.length) lines[0].csCounterMark = csInfo.counterMark;
     }
+    const parenWordCount = lines.reduce((sum, line) => sum + (line.words || []).length, 0);
+    if (parenSpans.length && parenWordCount === flatWordOffsets.length) {
+      let sourceWordIndex = 0;
+      for (const line of lines) {
+        line.sourceWordRefs = (line.words || []).map(() => ({ tokenId: t.id, wordIndex: sourceWordIndex++ }));
+      }
+    }
+
     const blk = {
       kind: 'paragraph', tokenId: t.id, parts: t.parts, notes, bodyMarkers, lines,
       unmatchedClosers: t.unmatchedClosers || [], part: currentPart, dh,
@@ -1601,65 +1624,113 @@ function typeset(rawText, settingsIn, env = {}) {
     ledger.transition(rec.issue_id, 'persists', 'render', 'word-multiset mismatch \u2014 token loss/duplication detected');
   }
 
-  // **P1-2: \u05d0\u05db\u05dc\u05d5\u05e1 parenRanges \u05de\u05de\u05e4\u05ea \u05d4\u05d4\u05d9\u05e7\u05e3** \u2014 \u05d4\u05d2\u05e0\u05ea paren-cross-boundary \u05d7\u05d9\u05d4
+  // P1-2: map parenthetical ranges after DP placement, using the source line
+  // index stamped at the point of placement (never inferred from page number/y).
   {
     let spanId = 0;
     for (const b of blocks) {
       if (b.kind !== 'paragraph' || !b.parenCharSpans || !b.parenCharSpans.length) continue;
       if (!b.flatWordOffsets || !b.flatWordOffsets.length) continue;
-      // \u05de\u05d9\u05e4\u05d5\u05d9 \u05d8\u05d5\u05d5\u05d7\u05d9 (...) \u05dc\u05de\u05d3\u05d3\u05d9 \u05de\u05d9\u05dc\u05d9\u05dd \u05d1\u05e8\u05e6\u05e3 \u05d4\u05d1\u05dc\u05d5\u05e7 (\u05e1\u05d3\u05e8 \u05de\u05e1\u05de\u05da, \u05dc\u05d0 \u05d7\u05d9\u05e4\u05d5\u05e9\u05d9\u05dd)
+
+      // Inline note refs inject marker/placeholder words that are not represented
+      // in flatWordOffsets. Refuse a guessed mapping until they have a parallel
+      // source-word index map.
+      if ((b.parts || []).some((part) => part.kind === 'note-ref')) {
+        eventLog.emit('scope-map', 'paren-range-unmapped', {
+          token: b.tokenId, reason: 'inline-note-ref-interleaves-source-word-index'
+        });
+        continue;
+      }
+      const outputWordCount = (b.lines || []).reduce((sum, line) => sum + (line.words || []).length, 0);
+      if (outputWordCount !== b.flatWordOffsets.length) {
+        eventLog.emit('scope-map', 'paren-range-unmapped', {
+          token: b.tokenId, reason: 'post-measure-word-count-differs-from-source',
+          sourceWords: b.flatWordOffsets.length, outputWords: outputWordCount
+        });
+        continue;
+      }
+
       const ranges = [];
       for (const sp of b.parenCharSpans) {
-        const startW = b.flatWordOffsets.find(x => x.at > sp.from && x.at < sp.to);
-        // **S6.0 (R2-M5):** find החזיר את המילה הראשונה בטווח (שהיא startW
-        // עצמו) ⇒ כל טווח סוגריים רב-מילים קרס למילה אחת והגנת
-        // paren-cross-boundary הייתה מתה. כעת נלקחת המילה ה**אחרונה** בטווח.
+        const startW = b.flatWordOffsets.find((x) => x.at > sp.from && x.at < sp.to);
         let endW = null;
         for (const off of b.flatWordOffsets) {
           if (off.at > sp.from && off.at < sp.to && off.at >= (startW ? startW.at : 0)) endW = off;
         }
-        if (startW && endW) ranges.push({ startWi: b.flatWordOffsets.indexOf(startW), endWi: b.flatWordOffsets.indexOf(endW) });
+        if (startW && endW) ranges.push({
+          startWi: b.flatWordOffsets.indexOf(startW),
+          endWi: b.flatWordOffsets.indexOf(endW)
+        });
       }
-      for (const r of ranges) {
-        // \u05de\u05d9\u05e4\u05d5\u05d9 \u05de\u05d3\u05d3\u05d9 \u05de\u05d9\u05dc\u05d4 \u05dc\u05e9\u05d5\u05e8\u05d5\u05ea \u05d4\u05d1\u05dc\u05d5\u05e7 \u2014 \u05d5\u05de\u05e9\u05dd \u05dc\u05de\u05e7\u05d5\u05dd \u05d1\u05e4\u05e8\u05d9\u05e1\u05d4
+
+      for (const range of ranges) {
         let acc = 0, startLine = -1, endLine = -1;
         for (let li = 0; li < b.lines.length; li++) {
           const len = (b.lines[li].words || []).length;
-          if (startLine < 0 && acc + len > r.startWi) startLine = li;
-          if (endLine < 0 && acc + len > r.endWi) endLine = li;
+          if (startLine < 0 && acc + len > range.startWi) startLine = li;
+          if (endLine < 0 && acc + len > range.endWi) endLine = li;
           acc += len;
         }
         if (startLine < 0 || endLine < 0) continue;
-        const found = { start: null, end: null };
-        for (const pg of pages) {
-          for (let c = 0; c < pg.columns.length; c++) {
-            for (const ln of pg.columns[c]) {
-              const tok = ln.tokenId != null ? ln.tokenId : (ln.meta && ln.meta.tokenId);
-              if (tok !== b.tokenId) continue;
-              const lIdx = ln.meta && ln.meta.lineIdx != null ? ln.meta.lineIdx : null;
-              if (lIdx === null) continue;
-              if (lIdx === startLine) found.start = { page: pg.index, col: c };
-              if (lIdx === endLine) found.end = { page: pg.index, col: c };
+
+        const locateSourceWord = (wordIndex) => {
+          let found = null;
+          let ambiguous = false;
+          const inspectPlacedLines = (page, lines, columnIndex) => {
+            for (const line of lines || []) {
+              const refs = Array.isArray(line.sourceWordRefs) ? line.sourceWordRefs : [];
+              if (!refs.some((ref) => ref && ref.tokenId === b.tokenId && ref.wordIndex === wordIndex)) continue;
+              if (found) ambiguous = true;
+              else found = { page: page.index, col: columnIndex };
             }
+          };
+          for (const page of pages) {
+            inspectPlacedLines(page, page.spanning && page.spanning.lines, -1);
+            for (let ci = 0; ci < page.columns.length; ci++) inspectPlacedLines(page, page.columns[ci], ci);
           }
-        }
+          return ambiguous ? null : found;
+        };
+        const found = {
+          start: locateSourceWord(range.startWi),
+          end: locateSourceWord(range.endWi)
+        };
+
         if (found.start && found.end) {
           spanId++;
-          const host = pages.find(pg => pg.index === found.start.page);
+          const host = pages.find((page) => page.index === found.start.page);
           if (host) {
             host.parenRanges = host.parenRanges || [];
             host.parenRanges.push({
               id: `p${spanId}@${b.tokenId}`,
+              tokenId: b.tokenId,
               startPage: found.start.page, startCol: found.start.col,
               endPage: found.end.page, endCol: found.end.col
             });
           }
+        } else {
+          eventLog.emit('scope-map', 'paren-range-unmapped', {
+            token: b.tokenId, reason: 'source-word-reference-not-found-or-ambiguous',
+            startWordIndex: range.startWi, endWordIndex: range.endWi, foundStart: !!found.start, foundEnd: !!found.end
+          });
         }
       }
     }
-    if (spanId) eventLog.emit('scope-map', 'paren-ranges-populated', { count: spanId });
-  }
 
+    // The DP retreat loop ran before this post-layout mapping. Re-run ONLY
+    // the parenthesis predicate; do not mutate or re-run other protections.
+    const { CHECKS } = require('../layout/protections-matrix');
+    let violations = 0;
+    for (const page of pages) {
+      const pageViolations = CHECKS.parenConsistency(page, settings, ledger);
+      violations += pageViolations.length;
+      if (pageViolations.length) {
+        eventLog.emit('protections', 'paren-consistency-after-scope-map', {
+          page: page.index, count: pageViolations.length
+        }, page.index);
+      }
+    }
+    if (spanId) eventLog.emit('scope-map', 'paren-ranges-populated', { count: spanId, violations });
+  }
   // ---- ledger finalize + CP5 ----
   eventLog.emit('ledger-finalize', 'summary', ledger.summary());
   const finalHash = layoutHash(pages); // hash \u05e9\u05dc \u05d4\u05de\u05e6\u05d1 \u05d4\u05e1\u05d5\u05e4\u05d9 (\u05d3\u05d8\u05e8\u05de\u05d9\u05e0\u05d9\u05d6\u05dd \u05d1\u05d9\u05df\u05be\u05e8\u05d9\u05e6\u05d5\u05ea)
@@ -2415,6 +2486,148 @@ function scanBrackets(segments, opts = {}) {
 }
 
 module.exports = { scanBrackets, matchCloser, CLOSER_FORMS };
+
+};
+__modules["src/engine/parser/document-structure.js"] = function (require, module, exports) {
+// src/engine/parser/document-structure.js — source-level heading validity (D-100)
+'use strict';
+
+const { scanBrackets } = require('./bracket-scanner');
+
+function hasMeaningfulText(value) {
+  return /[\p{L}\p{N}]/u.test(String(value == null ? '' : value));
+}
+
+function withoutFootnotes(value, opts = {}) {
+  const source = String(value == null ? '' : value);
+  if (!source) return source;
+  const scan = scanBrackets([{ text: source, paraIndex: 0 }], {
+    open: opts.fnOpen,
+    close: opts.fnClose
+  });
+  const ranges = scan.pairs.filter(pair => pair.depth === 1).sort((a, b) => b.open - a.open);
+  let visible = source;
+  for (const pair of ranges) visible = visible.slice(0, pair.open) + visible.slice(pair.close + 1);
+  return visible;
+}
+
+function paragraphHasBodyText(token) {
+  const parts = Array.isArray(token.parts)
+    ? token.parts
+    : [{ kind: 'text', value: token.raw != null ? token.raw : token.text }];
+  return parts.some(part => part && part.kind === 'text' && hasMeaningfulText(part.value));
+}
+
+function validateHeadingStructure(tokens, opts = {}) {
+  const input = Array.isArray(tokens) ? tokens : [];
+  const issues = [];
+  let pending = [];
+  let headingCount = 0;
+
+  for (let index = 0; index < input.length; index++) {
+    const token = input[index] || {};
+    if (token.type === 'heading') {
+      headingCount++;
+      const level = Number(token.level);
+      const info = {
+        level,
+        tokenId: token.id || null,
+        tokenIndex: index + 1,
+        title: String(token.text == null ? '' : token.text)
+      };
+      if (!Number.isInteger(level) || level < 0 || level > 7) {
+        issues.push({ code: 'heading-level-invalid', ...info });
+        pending = [info];
+        continue;
+      }
+      const titleWithoutNotes = withoutFootnotes(info.title, opts);
+      if (!hasMeaningfulText(titleWithoutNotes)) {
+        const containsNoteMarkup = info.title.trim() !== titleWithoutNotes.trim();
+        issues.push({
+          code: containsNoteMarkup ? 'heading-title-note-only' : 'heading-title-no-meaningful-text',
+          ...info
+        });
+      }
+      if (pending.length) {
+        const previous = pending[pending.length - 1];
+        if (!(level > previous.level)) {
+          issues.push({
+            code: 'heading-chain-not-increasing',
+            previousLevel: previous.level,
+            previousTokenId: previous.tokenId,
+            previousTokenIndex: previous.tokenIndex,
+            level,
+            tokenId: info.tokenId,
+            tokenIndex: info.tokenIndex
+          });
+          pending = [info];
+          continue;
+        }
+      }
+      pending.push(info);
+      continue;
+    }
+    if (token.type === 'paragraph' && paragraphHasBodyText(token)) pending = [];
+  }
+
+  if (pending.length) {
+    const last = pending[pending.length - 1];
+    issues.push({
+      code: 'heading-chain-no-body-text',
+      level: last.level,
+      tokenId: last.tokenId,
+      tokenIndex: last.tokenIndex,
+      chain: pending.map(item => item.level)
+    });
+  }
+  return { ok: issues.length === 0, issues, headingCount };
+}
+
+function formatHeadingStructureIssues(issues) {
+  return (Array.isArray(issues) ? issues : []).map(issue => {
+    const at = issue.tokenId ? ' [' + issue.tokenId + ']' : '';
+    switch (issue.code) {
+      case 'heading-title-note-only':
+        return 'כותרת H' + issue.level + at + ' מכילה הערת שוליים בלבד ואינה כוללת טקסט כותרת עצמאי.';
+      case 'heading-title-no-meaningful-text':
+        return 'כותרת H' + issue.level + at + ' אינה מכילה טקסט כותרת ממשי; סימני פיסוק או קישוט בלבד אינם כותרת.';
+      case 'heading-chain-not-increasing':
+        return 'רצף כותרות ללא טקסט גוף אינו היררכי: אחרי H' + issue.previousLevel +
+          ' מופיעה H' + issue.level + at +
+          '. יש להשלים תוכן במקטע הקודם לפני מעבר לרמה זהה או גבוהה יותר.';
+      case 'heading-chain-no-body-text':
+        return 'שרשרת הכותרות ' + issue.chain.map(level => 'H' + level).join(' → ') +
+          ' מסתיימת ללא פסקת גוף בעלת טקסט ממשי; הערות שוליים לבדן אינן נחשבות תוכן.';
+      case 'heading-level-invalid':
+        return 'נמצאה כותרת ברמה שאינה נתמכת (' + issue.level + ')' + at + '; הרמות התקינות הן H0–H7.';
+      default:
+        return 'נמצאה הפרת מבנה כותרות (' + (issue.code || 'unknown') + ')' + at + '.';
+    }
+  }).join('\n');
+}
+
+class DocumentStructureError extends Error {
+  constructor(issues) {
+    const detail = formatHeadingStructureIssues(issues);
+    super('מבנה מסמך לא תקין; העימוד נעצר לפני שלב המדידה:\n' + detail);
+    this.name = 'DocumentStructureError';
+    this.code = 'INVALID_DOCUMENT_STRUCTURE';
+    this.issues = Array.isArray(issues) ? issues : [];
+  }
+}
+
+function assertHeadingStructure(tokens, opts = {}) {
+  const result = validateHeadingStructure(tokens, opts);
+  if (!result.ok) throw new DocumentStructureError(result.issues);
+  return result;
+}
+
+module.exports = {
+  validateHeadingStructure,
+  assertHeadingStructure,
+  formatHeadingStructureIssues,
+  DocumentStructureError
+};
 
 };
 __modules["src/engine/typography/measure-api.js"] = function (require, module, exports) {
@@ -3444,6 +3657,9 @@ function fixDropWordInColumns(columnLines, minLen = 3, opts = {}) {
       if (mergedW == null || mergedW > colW - fitEps) continue; // לא נכנס — המילה נשארת (status quo)
       // משלבים את המילה הנופלת לתוך השורה הראשונה של הטור הבא (גרירה)
       nextFirst.words.unshift(...last.words);
+      if (Array.isArray(last.sourceWordRefs) || Array.isArray(nextFirst.sourceWordRefs)) {
+        nextFirst.sourceWordRefs = [...(last.sourceWordRefs || []), ...(nextFirst.sourceWordRefs || [])];
+      }
       nextFirst.widthPx = mergedW; // רוחב השורה אחרי המיזוג (נצרך ל-runt/balance)
       lines.pop();
       fixed = true;
@@ -3650,6 +3866,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
   const pages = [];
   let pageIdx = 0;
   let seqCounter = 0; // סדר הצבה — סדר קריאה (תיקון P0-3)
+  const sourceLineIndex = new WeakMap(); // source block line object -> stable block-local line index
   const lineH = Math.round(settings['body-font-size-pt'] * (96 / 72) * settings['body-line-height']);
   const imbMax = settings['imbalance-max-delta-px'];
 
@@ -3747,11 +3964,13 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
     const gap = meta.firstOfBlock ? blockGapPx(settings, lineH) : 0;
     let pendingGap = gap;
     for (const ln of lines) {
+      const lineIdx = sourceLineIndex.get(ln);
+      const lineMeta = Number.isInteger(lineIdx) ? { ...meta, lineIdx } : meta;
       let placed = false;
       for (let c = 0; c < cur.columns.length && !placed; c++) {
         const needPx = ln.heightPx + pendingGap - 0.5;
         if (colCapacity(cur.template, cur) - usedHeight(cur.columns[c], cur) >= needPx) {
-          cur.columns[c].push({ ...ln, meta, seq: seqCounter++ });
+          cur.columns[c].push({ ...ln, meta: lineMeta, seq: seqCounter++ });
           pendingGap = 0;
           placed = true;
         }
@@ -3759,7 +3978,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
       if (!placed) {
         flushPage();
         cur = newPage(meta.forceType || PAGE_TYPES.REGULAR);
-        cur.columns[0].push({ ...ln, meta, seq: seqCounter++ }); // טור חדש/עמוד חדש → ללא gap
+        cur.columns[0].push({ ...ln, meta: lineMeta, seq: seqCounter++ }); // טור חדש/עמוד חדש → ללא gap
         pendingGap = 0;
       }
     }
@@ -3808,24 +4027,25 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
           }
           if (cutIdx >= words.length) {
             // כל ההערה נכנסת בגבול התקרה — אין צורך בפיצול
-            cur.footnotes.push({ ...n, heightPx: h, mode: isCont ? 'split-rest' : 'normal', isContinuation: isCont });
+            cur.footnotes.push({ ...n, fragmentIndex: Number.isInteger(n.fragmentIndex) ? n.fragmentIndex : 0, heightPx: h, mode: isCont ? 'split-rest' : 'normal', isContinuation: isCont });
             continue;
           }
           const firstText = words.slice(0, cutIdx).join(' ');
           const restText = words.slice(cutIdx).join(' ');
-          cur.footnotes.push({ ...n, text: firstText, heightPx: linesFit * fnLH, lineH: fnLH, mode: 'split-first', linesShown: linesFit });
-          pendingBarNotes.push({ ...n, text: restText, isContinuation: true, continuationOf: n.tokenId, mode: 'split-rest' });
+          const fragmentIndex = Number.isInteger(n.fragmentIndex) ? n.fragmentIndex : 0;
+          cur.footnotes.push({ ...n, text: firstText, fragmentIndex, heightPx: linesFit * fnLH, lineH: fnLH, mode: 'split-first', linesShown: linesFit });
+          pendingBarNotes.push({ ...n, text: restText, fragmentIndex: fragmentIndex + 1, isContinuation: true, continuationOf: n.tokenId, mode: 'split-rest' });
           eventLog.emit('notes-budget', 'fn-split', { token: n.tokenId, marker: n.marker, barMax, firstWords: cutIdx }, cur.index);
           continue;
         }
         if (settings['long-footnote-policy'] === 'move-whole') {
-          pendingBarNotes.push({ ...n, mode: 'moved-whole', deferredToNextPage: true });
+          pendingBarNotes.push({ ...n, fragmentIndex: Number.isInteger(n.fragmentIndex) ? n.fragmentIndex : 0, mode: 'moved-whole', deferredToNextPage: true });
           eventLog.emit('notes-budget', 'fn-moved-whole', { token: n.tokenId, marker: n.marker }, cur.index);
           continue;
         }
         if (settings['long-footnote-policy'] === 'reject-to-body' && rejectToBody(n, `bar overflow ${h}>${barMax}`)) continue;
       }
-      cur.footnotes.push({ ...n, heightPx: h, lineH: Math.round((settings['body-font-size-pt'] * 0.8) * (96 / 72) * 1.25), isContinuation: isCont, mode: isCont ? 'split-rest' : 'normal' });
+      cur.footnotes.push({ ...n, fragmentIndex: Number.isInteger(n.fragmentIndex) ? n.fragmentIndex : 0, heightPx: h, lineH: Math.round((settings['body-font-size-pt'] * 0.8) * (96 / 72) * 1.25), isContinuation: isCont, mode: isCont ? 'split-rest' : 'normal' });
     }
     recomputeFnBudget(cur); // probe==reserved — פונקציה אחת (unified) לשני הצרכים
   }
@@ -3866,6 +4086,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
   for (let bi = 0; bi < blocks.length; bi++) {
     const blk = blocks[bi];
     const next = blocks[bi + 1];
+    if (Array.isArray(blk.lines)) blk.lines.forEach((line, lineIdx) => sourceLineIndex.set(line, lineIdx));
 
     // **S10 (REQ-UI-03):** התקדמות שלב הפריסה — "עומד עמוד X מתוך כ־Y" (Y מוערך;
     // מעודכן לספירה הסופית בסיום ה‑DP). בדידות 32 בלוקים — אפס השפעה על הפריסה.
@@ -3938,7 +4159,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
         if (cur.spanning || cur.columns.some(c => c.length)) { flushPage(); cur = newPage(PAGE_TYPES.REGULAR); }
         const bandH = blk.lines.reduce((s, ln) => s + (ln.heightPx || 0), 0);
         cur.spanning = {
-          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part }, seq: seqCounter++ })),
+          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part, lineIdx: i }, seq: seqCounter++ })),
           heightPx: bandH,
           customStyle: cs
         };
@@ -3949,6 +4170,8 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
 
     // תקציב הערות לפני מיקום (F-17 probe==reserved, כולל מדיניות הערה ארוכה)
     if (blk.kind === 'paragraph') reserveNotes(blk);
+    // reserveNotes/rejectToBody may append a recovery line; refresh block-local indices.
+    if (Array.isArray(blk.lines)) blk.lines.forEach((line, lineIdx) => sourceLineIndex.set(line, lineIdx));
 
     // **03.11(ד) — span_1col של המקור ל-H3–H6 (mode=full-width):** עד כאן כותרת
     // שנמדדה ברוחב מלא (674px) הוצבה בטור של 270px — שורה ברוחב 471px בטור
@@ -3963,7 +4186,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
       if (!cur.spanning && cur.template.columns.length >= 2) {
         const bandH3 = blk.lines.reduce((s, ln) => s + (ln.heightPx || 0), 0);
         cur.spanning = {
-          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part }, seq: seqCounter++ })),
+          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part, lineIdx: i }, seq: seqCounter++ })),
           heightPx: bandH3,
           titleTopPadPx: 0,
           orn: null
@@ -3994,7 +4217,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
         const topPad = orn && orn.scope && orn.scope.signTop ? orn.topPx : 0;
         const bottomPad = orn && orn.scope && orn.scope.signBottom ? orn.bottomPx : 0;
         cur.spanning = {
-          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part }, seq: seqCounter++ })),
+          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part, lineIdx: i }, seq: seqCounter++ })),
           heightPx: topPad + bandH + bottomPad,
           titleTopPadPx: topPad,
           orn: orn || null
@@ -5648,7 +5871,25 @@ class EventLog {
   }
 
   toTraceV2() {
-    return { schema: 'trace-v2', droppedEvents: this.droppedEvents, events: this.events.slice() };
+    const recording = this.verbosity !== 'off';
+    const omittedFields = [];
+    if (!recording) omittedFields.push('events');
+    else {
+      if (this.verbosity === 'minimal') omittedFields.push('payload');
+      if (this.verbosity !== 'full') omittedFields.push('pageIndex');
+    }
+    return {
+      schema: 'trace-v2',
+      capture: {
+        recording,
+        verbosity: this.verbosity,
+        eventStreamComplete: recording && this.droppedEvents === 0,
+        droppedEvents: this.droppedEvents,
+        omittedFields
+      },
+      droppedEvents: this.droppedEvents,
+      events: this.events.slice()
+    };
   }
 }
 
@@ -10736,6 +10977,8 @@ function planPageOrnaments(pages, settings, measureFn, io = {}) {
           while (hEnd + 1 < col.length && col[hEnd + 1].kind === 'heading' && col[hEnd + 1].level === 2) hEnd++;
           return col.slice(h0, hEnd + 1);
         })();
+        const headingTokenId = titleLines[0].tokenId != null ? String(titleLines[0].tokenId)
+          : (titleLines[0].meta && titleLines[0].meta.tokenId != null ? String(titleLines[0].meta.tokenId) : null);
         const colX = tpl.columns[0].x, colW = tpl.columns[0].w;
         const titleW = Math.max(1, ...titleLines.map(ln => lineWidthPx(ln, measureFn)));
         // מקור יחיד למידות (F-09): ההזמנה שחושבה בזמן הפריסה — לא חישוב כפול כאן
@@ -10754,12 +10997,12 @@ function planPageOrnaments(pages, settings, measureFn, io = {}) {
 
         if (scope.signTop) {
           const y = titleTop - ornMargins.top - h; // בתוך האזור שהוזמן (F-08)
-          pushOrnament(page, { kind: 'h2-ornament', slot: 'h2-top', kindStyle: settings['h2-orn-top'], x: Math.round(cx - w / 2), y, w, h, marginGapTop: titleTop - (y + h) }, rejected, pi, settings);
+          pushOrnament(page, { kind: 'h2-ornament', slot: 'h2-top', kindStyle: settings['h2-orn-top'], x: Math.round(cx - w / 2), y, w, h, marginGapTop: titleTop - (y + h), tokenId: headingTokenId }, rejected, pi, settings);
           planted.h2Top++;
         }
         if (scope.signBottom) {
           const y = titleBottom + ornMargins.bottom; // בתוך ההזמנה התחתונה
-          pushOrnament(page, { kind: 'h2-ornament', slot: 'h2-bottom', kindStyle: settings['h2-orn-bottom'], x: Math.round(cx - w / 2), y, w, h, marginGapBottom: y - titleBottom }, rejected, pi, settings);
+          pushOrnament(page, { kind: 'h2-ornament', slot: 'h2-bottom', kindStyle: settings['h2-orn-bottom'], x: Math.round(cx - w / 2), y, w, h, marginGapBottom: y - titleBottom, tokenId: headingTokenId }, rejected, pi, settings);
           planted.h2Bottom++;
         }
         if (scope.titleSide) {
@@ -10767,8 +11010,8 @@ function planPageOrnaments(pages, settings, measureFn, io = {}) {
           const sideH = Math.min(h, Math.round(titleH));
           const lift = sideOrnamentLiftPx(fontPx);
           const gap = Math.round(fontPx * 0.35);
-          pushOrnament(page, { kind: 'h2-ornament', slot: 'h2-side-right', kindStyle: settings['h2-orn-side'], x: Math.round(colX + colW - titleW - gap - w), y: titleTop + sideOrnamentOffsetY(titleH, sideH) + lift, w, h: sideH }, rejected, pi, settings);
-          pushOrnament(page, { kind: 'h2-ornament', slot: 'h2-side-left', kindStyle: settings['h2-orn-side'], x: Math.round(colX + titleW + gap), y: titleTop + sideOrnamentOffsetY(titleH, sideH) + lift, w, h: sideH }, rejected, pi, settings);
+          pushOrnament(page, { kind: 'h2-ornament', slot: 'h2-side-right', kindStyle: settings['h2-orn-side'], x: Math.round(colX + colW - titleW - gap - w), y: titleTop + sideOrnamentOffsetY(titleH, sideH) + lift, w, h: sideH, tokenId: headingTokenId }, rejected, pi, settings);
+          pushOrnament(page, { kind: 'h2-ornament', slot: 'h2-side-left', kindStyle: settings['h2-orn-side'], x: Math.round(colX + titleW + gap), y: titleTop + sideOrnamentOffsetY(titleH, sideH) + lift, w, h: sideH, tokenId: headingTokenId }, rejected, pi, settings);
           planted.h2Side += 2;
         }
       }
@@ -10782,14 +11025,15 @@ function planPageOrnaments(pages, settings, measureFn, io = {}) {
       if (page.spanning && page.spanning.lines.length) {
         const bln = page.spanning.lines[0];
         if (bln.kind === 'heading' && bln.level === 3 && bln.meta && bln.meta.firstOfBlock) {
+          const headingTokenId = bln.meta.tokenId != null ? String(bln.meta.tokenId) : (bln.tokenId != null ? String(bln.tokenId) : null);
           const left = Math.min(...tpl.columns.map(c => c.x));
           const right = Math.max(...tpl.columns.map(c => c.x + c.w));
           const lineH = bln.heightPx || fontPx;
           const lift = sideOrnamentLiftPx(fontPx);
           const yy = tpl.contentBox.top + sideOrnamentOffsetY(lineH, sideH) + lift;
           const wSide = Math.round(fontPx * 1.2);
-          pushOrnament(page, { kind: 'h3-side-ornament', slot: 'h3-side-right', kindStyle: settings['h3-side-orn'], x: Math.round(right - wSide), y: yy, w: wSide, h: Math.min(sideH, lineH) }, rejected, pi, settings);
-          pushOrnament(page, { kind: 'h3-side-ornament', slot: 'h3-side-left', kindStyle: settings['h3-side-orn'], x: Math.round(left), y: yy, w: wSide, h: Math.min(sideH, lineH) }, rejected, pi, settings);
+          pushOrnament(page, { kind: 'h3-side-ornament', slot: 'h3-side-right', kindStyle: settings['h3-side-orn'], x: Math.round(right - wSide), y: yy, w: wSide, h: Math.min(sideH, lineH), tokenId: headingTokenId }, rejected, pi, settings);
+          pushOrnament(page, { kind: 'h3-side-ornament', slot: 'h3-side-left', kindStyle: settings['h3-side-orn'], x: Math.round(left), y: yy, w: wSide, h: Math.min(sideH, lineH), tokenId: headingTokenId }, rejected, pi, settings);
           planted.h3Side += 2;
         }
       }
@@ -10801,13 +11045,14 @@ function planPageOrnaments(pages, settings, measureFn, io = {}) {
           const ln = col[i];
           if (ln.kind !== 'heading' || ln.level !== 3) continue;
           if (!ln.meta || !ln.meta.firstOfBlock) continue; // רק ראשית כותרת — לא כל שורה
+          const headingTokenId = ln.meta.tokenId != null ? String(ln.meta.tokenId) : (ln.tokenId != null ? String(ln.tokenId) : null);
           const yTop = tpl.contentBox.top + col.slice(0, i).reduce((s, l) => s + (l.heightPx || 0), 0);
           const lineH = ln.heightPx || fontPx;
           const lift = sideOrnamentLiftPx(fontPx);
           const yy = yTop + sideOrnamentOffsetY(lineH, sideH) + lift;
           const wSide = Math.round(fontPx * 1.2);
-          pushOrnament(page, { kind: 'h3-side-ornament', slot: 'h3-side-right', kindStyle: settings['h3-side-orn'], x: Math.round(colX + colW - wSide), y: yy, w: wSide, h: Math.min(sideH, lineH) }, rejected, pi, settings);
-          pushOrnament(page, { kind: 'h3-side-ornament', slot: 'h3-side-left', kindStyle: settings['h3-side-orn'], x: Math.round(colX), y: yy, w: wSide, h: Math.min(sideH, lineH) }, rejected, pi, settings);
+          pushOrnament(page, { kind: 'h3-side-ornament', slot: 'h3-side-right', kindStyle: settings['h3-side-orn'], x: Math.round(colX + colW - wSide), y: yy, w: wSide, h: Math.min(sideH, lineH), tokenId: headingTokenId }, rejected, pi, settings);
+          pushOrnament(page, { kind: 'h3-side-ornament', slot: 'h3-side-left', kindStyle: settings['h3-side-orn'], x: Math.round(colX), y: yy, w: wSide, h: Math.min(sideH, lineH), tokenId: headingTokenId }, rejected, pi, settings);
           planted.h3Side += 2;
         }
       }
@@ -10832,7 +11077,7 @@ function planPageOrnaments(pages, settings, measureFn, io = {}) {
           counters.record(dec.rollbackKey);
           const wDiv = Math.min(Math.round(fullW * 0.5), Math.round(fontPx * 6));
           const y = tpl.contentBox.top + used - Math.round((bln.heightPx || 0) / 2) - 1;
-          pushOrnament(page, { kind: 'heading-divider', slot: `hdr-div-l${bln.level}`, kindStyle: 'thin', x: Math.round(left + (fullW - wDiv) / 2), y, w: wDiv, h: DIVIDER_H_PX, rollbackKey: dec.rollbackKey }, rejected, pi, settings);
+          pushOrnament(page, { kind: 'heading-divider', slot: `hdr-div-l${bln.level}`, kindStyle: 'thin', x: Math.round(left + (fullW - wDiv) / 2), y, w: wDiv, h: DIVIDER_H_PX, rollbackKey: dec.rollbackKey, tokenId: bln.meta && bln.meta.tokenId || bln.tokenId || null }, rejected, pi, settings);
           planted.headingDivider++;
         } else if (dec.why !== 'disabled' && dec.why !== 'column-head-or-empty') {
           rejected.push({ page: pi, kind: 'heading-divider', why: dec.why });
@@ -10865,7 +11110,7 @@ function planPageOrnaments(pages, settings, measureFn, io = {}) {
             counters.record(dec.rollbackKey);
             const y = tpl.contentBox.top + usedSoFar - Math.round((ln.heightPx || 0) / 2) - 1;
             const wDiv = Math.min(Math.round(colW * 0.5), Math.round(fontPx * 6));
-            pushOrnament(page, { kind: 'heading-divider', slot: `hdr-div-l${ln.level}`, kindStyle: 'thin', x: Math.round(colX + (colW - wDiv) / 2), y, w: wDiv, h: DIVIDER_H_PX, rollbackKey: dec.rollbackKey }, rejected, pi, settings);
+            pushOrnament(page, { kind: 'heading-divider', slot: `hdr-div-l${ln.level}`, kindStyle: 'thin', x: Math.round(colX + (colW - wDiv) / 2), y, w: wDiv, h: DIVIDER_H_PX, rollbackKey: dec.rollbackKey, tokenId: ln.meta && ln.meta.tokenId || ln.tokenId || null }, rejected, pi, settings);
             planted.headingDivider++;
           } else if (dec.why !== 'disabled' && dec.why !== 'column-head-or-empty') {
             rejected.push({ page: pi, kind: 'heading-divider', why: dec.why });
@@ -10880,7 +11125,7 @@ function planPageOrnaments(pages, settings, measureFn, io = {}) {
       if (dec.insert) {
         const wDiv = Math.round(tpl.columns[0].w * 0.4);
         const y = tpl.contentBox.bottom - Math.round(fontPx * 2);
-        pushOrnament(page, { kind: 'shaar-divider', slot: `shaar-div-${page.type}`, kindStyle: dec.style, x: Math.round(tpl.columns[0].x + (tpl.columns[0].w - wDiv) / 2), y, w: wDiv, h: DIVIDER_H_PX }, rejected, pi, settings);
+        pushOrnament(page, { kind: 'shaar-divider', slot: `shaar-div-${page.type}`, kindStyle: dec.style, x: Math.round(tpl.columns[0].x + (tpl.columns[0].w - wDiv) / 2), y, w: wDiv, h: DIVIDER_H_PX, sourceKey: 'shaar-divider:' + page.type }, rejected, pi, settings);
         planted.shaarDivider++;
       }
     }
@@ -10892,6 +11137,8 @@ function planPageOrnaments(pages, settings, measureFn, io = {}) {
       for (let c = 0; c < Math.min(page.columns.length, tpl.columns.length); c++) if (page.columns[c].length) last = c;
       if (last >= 0) {
         const col = page.columns[last];
+        const lastLine = col[col.length - 1];
+        const lastTokenId = lastLine && (lastLine.tokenId != null ? lastLine.tokenId : (lastLine.meta && lastLine.meta.tokenId));
         const used = colUsed(col);
         // התקציב הפנוי בפועל — בכפוף לפס החוצה־טורים (FWD-1) ולמרווח נשימה
         const cap = tpl.contentBox.height - (page.spanning ? page.spanning.heightPx : 0);
@@ -10904,7 +11151,8 @@ function planPageOrnaments(pages, settings, measureFn, io = {}) {
           pushOrnament(page, {
             kind: 'chapter-end-ornament', slot: 'chapter-end', kindStyle: settings['chapter-end-ornament'],
             x: Math.round(colX + (colW - fit.wPx) / 2), y: Math.round(tpl.contentBox.top + used + (budget - fit.hPx) / 2),
-            w: fit.wPx, h: fit.hPx
+            w: fit.wPx, h: fit.hPx,
+            ...(lastTokenId != null ? { tokenId: String(lastTokenId) } : { sourceKey: 'chapter-end' })
           }, rejected, pi, settings);
           planted.chapterEnd++;
         } else if (fit.reason !== 'kind-none' && fit.reason !== 'kind-unknown') {
@@ -11465,7 +11713,7 @@ function serializeTypesetResult(result) {
     settings: result.settings,
     pages: result.pages,                 // עצמים פשוטים (columns/lines/template) — ניתנים להעברה
     report,                              // findings + counts + retreat (plain)
-    trace: result.events.toTraceV2(),    // events: [{seq,stage,label,pageIndex,ts,payload}]
+    trace: result.events.toTraceV2(),    // capture: recording/verbosity/completeness; events: [{seq,stage,label,pageIndex,ts,payload}]
     ledger: result.ledger.toSchemaV2(),  // issues: [...] (lifecycle מלא)
     ledgerSummary: result.ledger.summary(),
     toc: result.toc,

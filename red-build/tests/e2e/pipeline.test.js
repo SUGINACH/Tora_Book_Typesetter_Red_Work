@@ -62,6 +62,33 @@ describe('e2e-pipeline', () => {
     assert(typeof result.layoutHash === 'string' && result.layoutHash.length >= 16, 'layout hash present');
   });
 
+  it('maps long parenthetical spans after DP placement and records cross-column/page violations', () => {
+    const settings = { ...getDefaultSettings(), 'paren-style-scale': 0.88 };
+    const body = '(' + Array.from({ length: 900 }, () => 'מילה').join(' ') + ')';
+    const result = typeset(body, settings);
+    const ranges = result.pages.flatMap((page) => page.parenRanges || []);
+    assert(ranges.length > 0, 'parenthesis source ranges must map to placed line indices');
+    assert(ranges.some((range) => range.startPage !== range.endPage || range.startCol !== range.endCol),
+      'long parenthetical range must cross a column or page boundary');
+    const issues = [...result.ledger.issues.values()].filter((issue) => issue.kind === 'paren-cross-boundary');
+    assert(issues.length > 0, 'post-scope-map parenthesis predicate must create a ledger issue');
+    assert(issues.some((issue) => ranges.some((range) => issue.target === range.id)),
+      'ledger target must identify the mapped semantic parenthesis range');
+  });
+
+  it('audits parenthetical boundaries when visual parenthesis scaling is disabled', () => {
+    const settings = { ...getDefaultSettings(), 'paren-style-scale': 1 };
+    const body = '(' + Array.from({ length: 450 }, () => 'מילה').join(' ') + ')';
+    const result = typeset(body, settings);
+    const ranges = result.pages.flatMap((page) => page.parenRanges || []);
+    assert(ranges.length > 0, 'structural parenthesis ranges are still recorded at scale 1');
+    assert(ranges.some((range) => range.startPage !== range.endPage || range.startCol !== range.endCol),
+      'the parenthesis range crosses a column or page boundary');
+    const issues = [...result.ledger.issues.values()].filter((issue) => issue.kind === 'paren-cross-boundary');
+    assert(issues.some((issue) => ranges.some((range) => issue.target === range.id)),
+      'the ledger links the cross-boundary finding to the semantic range');
+  });
+
   it('determinism: two runs yield identical layoutHash', () => {
     const s = getDefaultSettings();
     const a = typeset(FIXTURE, s);

@@ -733,6 +733,7 @@ describe('S10.2 שער 7 + REQ-UI-01 — לשוניות, נגישות, רגרס�
       assert(labels.includes(wanted), `כרטיס חסר: ${wanted}`);
     }
     assert(app.testing.root.textContent.includes('0'), 'droppedEvents=0 מוצג');
+    assert(app.testing.root.textContent.includes('איסוף פעיל (standard)'), 'מצב איסוף פעיל מוצג במפורש');
     // trace: סינון שלב
     const stageSel = app.testing.root.querySelectorAll('select').find(s => (s.getAttribute('aria-label') || '').includes('שלבי מסלול'));
     assert(stageSel, 'בורר שלבים קיים');
@@ -768,8 +769,23 @@ describe('D-65 — פרוטוקול Worker: single-flight, ביטול, וליד�
     assert(Array.isArray(json.pages) && json.pages.length > 0);
     assert(json.report && json.report.schema === 'diagnostics-v2');
     assert(json.trace && Array.isArray(json.trace.events));
+    assert(json.trace.capture && json.trace.capture.recording === true, 'trace capture metadata survives Worker JSON roundtrip');
+    assertEq(json.trace.capture.verbosity, 'standard');
     assert(json.ledger && Array.isArray(json.ledger.issues));
     assert(Array.isArray(json.tokens) && json.tokens.length > 0);
+  });
+
+  it('trace-verbosity=off מצהיר שאיסוף כבוי ואינו מדכא findings או ledger', () => {
+    const result = typeset(SMALL_DOC, { ...getDefaultSettings(), 'trace-verbosity': 'off' });
+    const serialized = serializeTypesetResult(result);
+    assertEq(serialized.trace.capture.recording, false, 'ה-trace מסומן כבוי');
+    assertEq(serialized.trace.capture.eventStreamComplete, false, 'רשימה ריקה במצב off אינה מסומנת כשלמה');
+    assert(serialized.report.findings.length >= 0, 'הדוח נשאר זמין');
+    assert(Array.isArray(serialized.ledger.issues), 'ה-Ledger נשאר זמין');
+    const app = createApp(makeDoc(), { transport: inlineTransport.createInlineTransport() });
+    app.testing.setResult(serialized);
+    assert(app.testing.root.textContent.includes('איסוף trace כבוי'), 'ה-UI אינו מציג רשימה ריקה כאילו נאספה');
+    assertEq(app.testing.root.querySelectorAll('.trace-table tbody tr').length, 0, 'אין אירועים כשהאיסוף כבוי');
   });
 
   it('single-flight: בקשה חדשה מבטלת את הקודמת (תוצאה ישנה נזרקת)', async () => {

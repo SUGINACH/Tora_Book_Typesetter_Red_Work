@@ -1,0 +1,309 @@
+{
+ "scenarios": {
+  "doc": {
+   "group": "doc",
+   "pages": 104,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 9908
+  },
+  "prob": {
+   "group": "prob",
+   "pages": 125,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 16886
+  },
+  "cfg-default": {
+   "group": "cfg",
+   "pages": 29,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2245
+  },
+  "cfg-size10": {
+   "group": "cfg",
+   "pages": 23,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2276
+  },
+  "cfg-size11": {
+   "group": "cfg",
+   "pages": 26,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2471
+  },
+  "cfg-size13.4": {
+   "group": "cfg",
+   "pages": 34,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2648
+  },
+  "cfg-lh1.25": {
+   "group": "cfg",
+   "pages": 28,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 1940
+  },
+  "cfg-lh1.5": {
+   "group": "cfg",
+   "pages": 31,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2505
+  },
+  "cfg-fn2col": {
+   "group": "cfg",
+   "pages": 29,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2474
+  },
+  "cfg-h3h4inline2": {
+   "group": "cfg",
+   "pages": 28,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2095
+  },
+  "cfg-col44": {
+   "group": "cfg",
+   "pages": 28,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2254
+  },
+  "synth-1": {
+   "group": "synth",
+   "pages": 17,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 1742
+  },
+  "synth-2": {
+   "group": "synth",
+   "pages": 17,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 1984
+  },
+  "synth-3": {
+   "group": "synth",
+   "pages": 19,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 1790
+  },
+  "synth-4": {
+   "group": "synth",
+   "pages": 19,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 1558
+  },
+  "synth-5": {
+   "group": "synth",
+   "pages": 19,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2076
+  },
+  "synth-6": {
+   "group": "synth",
+   "pages": 19,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2353
+  },
+  "synthShort-11": {
+   "group": "synth",
+   "pages": 17,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2033
+  },
+  "synthShort-12": {
+   "group": "synth",
+   "pages": 15,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 1423
+  },
+  "synthShort-13": {
+   "group": "synth",
+   "pages": 15,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 1599
+  },
+  "synthShort-14": {
+   "group": "synth",
+   "pages": 16,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 1439
+  },
+  "cfg-dividers": {
+   "group": "cfg",
+   "pages": 29,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2510
+  },
+  "synthDiv-21": {
+   "group": "synth",
+   "pages": 19,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2240
+  },
+  "synthDiv-22": {
+   "group": "synth",
+   "pages": 20,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2238
+  },
+  "synthNoDiv-21": {
+   "group": "synth",
+   "pages": 19,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2302
+  },
+  "synthNoDiv-22": {
+   "group": "synth",
+   "pages": 17,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2175
+  },
+  "cfg-fncont": {
+   "group": "cfg",
+   "pages": 29,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2748
+  },
+  "synthFnCont-31": {
+   "group": "synth",
+   "pages": 19,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 1492
+  },
+  "synthFnCont-32": {
+   "group": "synth",
+   "pages": 19,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 1962
+  },
+  "synthFnBlock-31": {
+   "group": "synth",
+   "pages": 19,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 1325
+  },
+  "synthFnBlock-32": {
+   "group": "synth",
+   "pages": 20,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2157
+  },
+  "cfg-paren-fixed9": {
+   "group": "cfg",
+   "pages": 29,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2293
+  },
+  "cfg-paren-off": {
+   "group": "cfg",
+   "pages": 29,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2413
+  },
+  "synthParen-41": {
+   "group": "synth",
+   "pages": 18,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2123
+  },
+  "synthParen-42": {
+   "group": "synth",
+   "pages": 19,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 1954
+  },
+  "synthParen-43": {
+   "group": "synth",
+   "pages": 19,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 2267
+  },
+  "synthParenOff-41": {
+   "group": "synth",
+   "pages": 18,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 1552
+  },
+  "synthParenOff-42": {
+   "group": "synth",
+   "pages": 19,
+   "total": 0,
+   "counts": {},
+   "jsErrors": 0,
+   "ms": 1561
+  }
+ },
+ "updated": "2026-11-08T22:32:28.365Z"
+}

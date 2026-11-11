@@ -42,11 +42,11 @@ jobs:
   # בדפדפן headless אמיתי, טוען את ספר המבחן, ומודד גיאומטריה בפועל:
   # חפיפות שורות, גלישות מטור, כותרות עליונות, שערים, יישור וגופנים.
   #
-  # **S4.11 (בקשת המשתמש: "כל הבדיקות צריכות להיעשות על הקובץ ה'גדול מאוד'"):**
-  # ריצה כפולה — (1) ה-fixture הקטן כעשן-רגרסיה מהיר; (2) הקורפוס הגדול מאוד
-  # (audits/very_long_test_text.txt — 3.4MB, 849 עמודים בדפדפן) כבדיקה הקובעת.
-  # האודיט מודע-וירטואליזציה: התצוגה מרנדרת חלון חי בלבד מעל 60 עמודים, והאודיט
-  # סורק את הספר בגלילה ומבקר כל עמוד כשהוא חי — עם בדיקת כיסוי מלא (COVERAGE).
+  # ריצה כפולה — (1) fixture קטן כעשן-רגרסיה מהיר; (2) הקורפוס התקין הגדול ביותר
+  # (audits/long_test_text.txt — 291,719 מילים, כ-1,038 עמודים בריצת DP).
+  # audits/very_long_test_text.txt (3.4MB) נשאר negative control של D-100:
+  # הוא נבדק לדחייה מפורשת ואינו מוזן לעימוד. האודיט מודע-וירטואליזציה:
+  # סריקה בגלילה של כל עמוד חי ב-DOM עם בדיקת כיסוי מלא (COVERAGE).
   layout-audit:
     runs-on: ubuntu-latest
     # **S5.2 (P-11):** תקרה מפורשת — הסריקה הכפולה (עשן + הקורפוס הגדול) עם
@@ -59,15 +59,19 @@ jobs:
           node-version: 22
       # **S5.2 (P-11):** נעילת גרסה — 0.41.2 היא הגרסה האחרונה ב-npm (אין 1.x);
       # שדרוג לא מבוקר של ה-CLI יכול לשבור את חוזה ה-eval/פלט של האודיט.
+      - name: Validate D-100 layout-audit inputs
+        run: |
+          node tools/validate-source-structure.js audits/very_long_test_text.txt --expect-invalid
+          node tools/validate-source-structure.js audits/long_test_text.txt
       - name: Install agent-browser + headless browser
         run: |
           npm install -g agent-browser@0.41.2
           agent-browser install --with-deps
       - name: Layout audit — smoke (small fixture, fail fast)
         run: bash tools/layout-audit/run.sh
-      - name: Layout audit — the very large corpus (849 pages, virtualization sweep)
+      - name: Layout audit — largest valid corpus (about 1,038 pages, virtualization sweep)
         run: |
-          LAYOUT_AUDIT_FIXTURE="$PWD/audits/very_long_test_text.txt" \
+          LAYOUT_AUDIT_FIXTURE="$PWD/audits/long_test_text.txt" \
           LAYOUT_AUDIT_OUT=/tmp/layout-audit-report-very-long.json \
           LAYOUT_AUDIT_READY_TIMEOUT_MS=480000 \
             bash tools/layout-audit/run.sh

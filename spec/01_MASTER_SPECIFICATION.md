@@ -321,6 +321,7 @@
 28. **H2 not starting fresh page** — contract test (page index & top geometry).
 29. **H7 as side-note ignoring mode-h7** (F-13) — control must be wired; dead-control CI (REQ-GOV-04).
 30. **Chapter numbering reset per part** — counters integration test.
+31. **Source heading-chain validity (D-100/U-G)** — preflight before measurement: heading-only runs must descend strictly; the deepest heading must be followed by real body text; footnote-only content does not count; invalid documents are rejected without silent repair.
 
 ## D6. גרפיקה
 
@@ -512,6 +513,20 @@
 - אותו מספור עמודים התייחסות (המשתמש תיקן הנחת AI) `[מ-מ]` Chat_06.
 - "דריכה במקום" → דרוש התקדמות מהותית, לא אישורון `[מ-מ]` Chat_06.
 
+## U-G. דרישה מפורשת — תקינות מבנית של מסמך המקור (10.11.2026) [USER-EXPLICIT]
+
+- כל מסמך, לרבות מסמך בדיקה קבוע או רנדומלי, חייב להיות בנוי בצורה תקינה לפני שמנסים לעמד אותו.
+- אין שתי כותרות מאותה רמה ברצף ללא טקסט ממשי ביניהן; רצף כותרות ברמות עולות מותר (למשל 1→2→3→4→5→6→7), אך הכותרת העמוקה/האחרונה חייבת להיות מלווה בטקסט גוף.
+- הערת שוליים לבדה אינה טקסט גוף, וכותרת שתוכנה שלה הוא הערת שוליים בלבד אינה תקינה.
+- יש לדחות מסמך פגום באבחון מפורש לפני המדידה; אין לבצע תיקון מבני אוטומטי ושקט.
+
+## U-H. הוראת משתמש — השעיה מלאה של P6/P7 (10.11.2026) [USER-EXPLICIT]
+
+- אין להריץ, לחשב, להציג, לנתח או להשתמש במדדי P6/P7 בשלב הנוכחי.
+- אין לבצע התאמת פסקאות, מילים או שורות מול PDF היסטורי, ואין לבסס על המדדים שינוי במנוע או החלטת איכות.
+- קוד וכלי השוואה ישנים נשארים חומר ארכיוני בלבד; הם אינם חלק מ-CI או מתוכנית העבודה הפעילה.
+- בדיקות שימור תוכן, גיאומטריה, דטרמיניזם ודרישות RED עצמאיות ממשיכות לפי חוזיהן, בלי תלות במדדים אלה.
+
 ---
 
 # חלק ט׳ — ארכיטקטורה יעד (Target Architecture)
@@ -539,7 +554,7 @@ INPUT(raw text/files)
 
 ```
 src/engine/
-  parser/{dfa-lexer, bracket-scanner, block-tokenizer, metadata, ast-model}.js
+  parser/{dfa-lexer, bracket-scanner, block-tokenizer, document-structure, metadata, ast-model}.js
   typography/{measure-api, harfbuzz-runner, font-metrics, kp-linebreak, glue-tables, protectors(runt,marker,abbr)}.js
   layout/{page-templates, column-flow, candidate-generator, scorer(capacity+context+penalties), dp-planner, protections-matrix, balancing(chapter-end,H3,AQ-stretches), footnote-budget, endnote-pages, sidenotes, headings-escort, dividers-state, rollback-snapshot}.js
   decoration/{ornament-fit, shaar-boxes, headers-builder, folio, toc-builder}.js
@@ -584,7 +599,7 @@ widow=אלמנה · orphan=יתום · sparse-line=שורה דלילה · imbala
 
 # נספח 2 — Test corpus manifest
 
-canonical `very_long_test_text.txt`(5,702L, sha 5e73b913…) · very_long_test_text_2 · ch63_final_paragraph_failure_case · chapters_focus/ · fixtures: capacity-before-h3, section-end-before-divider, consecutive-notes, long-footnote-split, nested-parens, cross-column-parens, mid-doc-metadata-like-line, single-word-paragraph, heading-run, toc-stress, verso-headers, dropword-align, qa-modes(3), aq-on-off, folder-assets-import, docx-sample, shaar-set-roundtrip, print-parity, offline-guard, determinism-repeat, trigger-matrix(Gold test-triggers 6 kinds), 21 IMUD scenarios, 8 IMUD feature suites.
+canonical `very_long_test_text.txt`(5,702L, sha 5e73b913…) · very_long_test_text_2 · ch63_final_paragraph_failure_case · chapters_focus/ · fixtures: capacity-before-h3, section-end-before-divider, consecutive-notes, long-footnote-split, nested-parens, cross-column-parens, mid-doc-metadata-like-line, single-word-paragraph, heading-run, toc-stress, verso-headers, dropword-align, qa-modes(3), aq-on-off, folder-assets-import, docx-sample, shaar-set-roundtrip, print-parity, offline-guard, determinism-repeat, trigger-matrix (Gold V21, 10 קובצי טקסט הועברו לארכיון בלבד; אינם fixtures פעילים ואינם ב-CI עד התאמה נפרדת ל-D-100), 21 IMUD scenarios, 8 IMUD feature suites.
 
 # נספח 3 — Decision log (D-series, מחייב תחזוקה)
 

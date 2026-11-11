@@ -1,0 +1,99 @@
+# ADR-0004: PDF backend, Type0 embedding and ToUnicode
+
+- Status: proposed — output prototype required
+- Date: 2026-11-01
+- Related tasks: 10, 66, 67, 70
+- Related profiles: output backend shared; source text and glyph mapping are profile-independent inputs
+
+## Context
+
+The PDF must contain real embedded/subset fonts and preserve searchable/copyable Hebrew text. Visual raster equality alone is insufficient: PDF text extraction must map glyph codes through ToUnicode to logical Unicode text and maintain RTL order, niqqud and ligatures.
+
+## Alternatives to test
+
+| Candidate | Approach | Primary risk |
+|---|---|---|
+| A | Low-level PDF object construction (e.g. lopdf) | Correct Type0/CIDFontType2, widths, CID mapping, ToUnicode CMap, subset naming and resource management |
+| B | Higher-level PDF library (e.g. printpdf) with custom font/text layer | Whether the library exposes enough control over Type0, glyph IDs, subsetting and ToUnicode |
+| C | Dedicated PDF writer with a shaping-aware text API | Dependency maturity, deterministic output and ability to preserve the engine's glyph/source map |
+
+No library is selected.
+
+## Required prototype
+
+Generate a small multi-page Hebrew sample with niqqud, mixed Latin/numbers, parentheses, ligatures and a footnote. Embed a real font subset. Include ToUnicode CMap and a stable glyph-to-source map.
+
+Validate:
+- font embedding and subset tables;
+- text extraction with an independent PDF extractor;
+- logical Hebrew order, punctuation and combining marks after extraction;
+- raster output and bounding boxes against the DisplayList;
+- deterministic content streams after excluding permitted container metadata;
+- hyperlinks/bookmarks and page anchors in a second pass.
+
+## Acceptance
+
+Reject any backend that requires converting all text to outlines or cannot prove logical Unicode extraction. Selection requires both visual and text-extraction evidence, pinned library version and cross-platform build tests.
+
+## Research snapshot — 2026-11-01
+
+- `printpdf 0.12.8` documents embedded fonts, Unicode text output, automatic font subsetting and advanced text operations. More importantly, its `TextItem::GlyphIds` accepts explicit glyph IDs and per-glyph horizontal offsets, while `Codepoint.cid` carries an arbitrary Unicode string used by its ToUnicode CMap generator. The source implementation maps each glyph/CID to a vector of Unicode codepoints, so it can represent a ligature or shaped cluster mapping to multiple scalars.
+- The printpdf repository's `font_embedding` tests explicitly inspect the embedded font, widths and ToUnicode mappings; its `glyph_run_merge` tests exercise explicit positioned glyph IDs. This is stronger evidence than the crate's high-level `TextItem::Text` API alone.
+- Limitation: `Codepoint.offset` is horizontal; vertical mark positioning must be represented through absolute text matrices or a proven glyph-position operation. The implementation must also preserve glyph/CID identity through subsetting, especially for CID-keyed CFF. The crate documentation still labels its generic text extraction feature experimental.
+- `lopdf 0.46.0` is a lower-level PDF object manipulation library. It can support a custom writer, but a correct Type0 font dictionary, CIDFont, widths, CIDToGIDMap, ToUnicode CMap and subset remapping would remain our responsibility.
+- A dedicated font/PDF crate exposes ToUnicode parsing and subsetting capabilities, but its suitability for PDF *writing* and the exact Type0 mapping still needs a direct prototype.
+
+Sources:
+- https://docs.rs/crate/printpdf/latest
+- https://docs.rs/lopdf/latest/lopdf/
+- https://docs.rs/prismpdf-fonts/latest/pdf_fonts/
+
+- `lightweight-pdf 0.3.0` is a recent MIT-licensed Rust project whose writer emits `/Subtype /Type0`, a `/CIDFontType2` descendant, `Identity-H`, `CIDToGIDMap /Identity` and a `ToUnicode` CMap. Its tests invoke `pdftotext` and verify extraction for German special characters.
+- Important limitation: the project explicitly says it is **not a typesetting system**. Its `CidFont.to_unicode` field is a list of `(CID, Unicode scalar)` pairs, which does not by itself prove correct mapping for ligatures or shaped clusters that correspond to multiple Unicode scalars. Its font subsystem uses `skrifa` and direct character-to-glyph lookup; that is not evidence of Hebrew GPOS mark positioning or bidi shaping.
+- The library is therefore a valuable Type0/ToUnicode implementation reference and possible writer-only experiment, not a candidate for the layout engine. Reusing its writer crate would require a separate API test to feed externally shaped glyph IDs and multi-scalar cluster mappings.
+- `printpdf 0.12.8` documents embedded fonts and subsetting but calls text extraction experimental; it remains unproven for the required Hebrew round-trip.
+- `lopdf 0.46.0` offers low-level PDF objects but leaves the font/CMap correctness burden with this project.
+
+Sources:
+- https://github.com/casoon/lightweight-pdf
+- https://docs.rs/lightweight-pdf/latest/lightweight_pdf/
+- https://docs.rs/lopdf/latest/lopdf/
+- https://docs.rs/crate/printpdf/latest
+
+## Prototype run 1 — Poppler RTL extraction finding
+
+Evidence: [PDF probe run 41348147637](https://github.com/SUGINACH/Tora_Book_Typesetter_Rust/actions/runs/41348147637), source commit `f22703645c89c4ac42ed9cad9e988c793dd0385c`.
+
+- The generated PDF contains a Type0 font, a ToUnicode CMap and UTF-16BE `/ActualText` entries whose bytes encode the original Hebrew strings in logical source order.
+- The independent Poppler 25.06 `pdftotext -raw` and `-layout` outputs returned reversed Hebrew codepoint sequences wrapped in RLE/PDF directional controls. The exact-string acceptance check correctly failed; this was not waived or normalized.
+- The follow-up run added MuPDF's independent text extractor as the logical-order acceptance check while retaining both Poppler outputs as diagnostic evidence.
+- [Prototype run 2 — 41350088448](https://github.com/SUGINACH/Tora_Book_Typesetter_Rust/actions/runs/41350088448) passed. It emitted a Type0 font, ToUnicode CMap and embedded/subset CID TrueType font; 30 glyph-to-Unicode mappings were recorded. Two PDF builds produced identical glyph manifests. MuPDF extracted all three Hebrew/Latin corpus lines exactly in logical order.
+- Poppler raw/layout extraction still differs from the logical strings because of its RTL bidi post-processing. The report preserves both outputs and hashes; this is not silently normalized or called a pass.
+- The probe is one page and three lines. It does not establish full-book text extraction, PDFium/Acrobat selection geometry, bookmarks, links, accessibility, PDF/A or large-document performance.
+
+**Current result:** `printpdf 0.12.8` is a viable **prototype candidate**, not an approved production backend. Keep ADR proposed until a larger Hebrew corpus, multi-page extraction, raster/DisplayList geometry and cross-platform/viewer checks pass.
+
+
+## Prototype run 2 — MuPDF logical extraction
+
+Evidence: [PDF Type0/ToUnicode run 41350088448](https://github.com/SUGINACH/Tora_Book_Typesetter_Rust/actions/runs/41350088448).
+
+- Pinned HarfRust 0.15.0 shaped glyph IDs and positions; printpdf 0.12.8 accepted explicit glyph IDs and cluster Unicode mappings.
+- PDF inspection confirmed Type0, ToUnicode and an embedded/subset CID TrueType font with Identity-H.
+- 30 glyph-to-Unicode mappings were emitted. The build was repeated with the generated lockfile and the glyph manifest matched exactly.
+- MuPDF's independent extraction matched all three logical source lines exactly, including Hebrew/niqqud and mixed Latin content.
+- Poppler raw/layout outputs are diagnostic only and are recorded as nonmatching; do not report universal extractor parity.
+- The artifact contains the PDF, extraction outputs, font table report, PDF metadata, rendered PNG and manifest.
+
+This result validates a narrow writer prototype. It does not close task 66, does not establish a production PDF backend and does not justify importing printpdf into the production workspace.
+
+
+## Stage A technology-gate update — 2026-11-02
+
+The second prototype [run 41350088448](https://github.com/SUGINACH/Tora_Book_Typesetter_Rust/actions/runs/41350088448) passed its narrow acceptance check. HarfRust-shaped glyph IDs/positions were supplied to printpdf 0.12.8; inspection found a Type0 font, ToUnicode CMap, embedded/subset CID TrueType font and Identity-H. Thirty glyph-to-Unicode mappings were emitted; two builds produced identical glyph manifests; independent MuPDF extraction reproduced all three Hebrew/niqqud and mixed Latin source lines in logical order.
+
+Poppler pdftotext -raw and -layout remain diagnostic non-matches because their RTL post-processing reverses the Hebrew codepoint sequence and adds bidi controls. This discrepancy is recorded, not normalized away. The test is one page and three lines; it does not prove multi-page extraction, vertical mark placement, broad ligature/cluster coverage, raster/DisplayList geometry, multiple viewers, bookmarks, accessibility or production performance.
+
+printpdf 0.12.8 is therefore a viable prototype candidate, not an accepted production backend. lopdf remains the lower-level alternative with greater project-owned Type0/CID/ToUnicode responsibility; lightweight-pdf remains a writer reference whose scalar mapping is insufficient evidence for multi-scalar clusters. No backend is selected.
+
+**Task 10 gate:** open pending a larger multi-page Hebrew/niqqud corpus and cross-viewer/rendering checks.

@@ -6,9 +6,10 @@ on:
   pull_request:
     branches: [ main ]
     paths:
-      - 'red-build/src/engine/**'
-      - 'red-build/src/ui/engine-worker-main.js'
-      - 'red-build/src/ui/worker-protocol.js'
+      # The single builder emits both engine-worker.bundle.js and app.bundle.js.
+      # Any browser-reachable source module can affect either graph; watch the
+      # complete source tree so UI-only changes cannot leave app.bundle.js stale.
+      - 'red-build/src/**'
       - 'tools/build-worker-bundle.js'
 
 permissions:

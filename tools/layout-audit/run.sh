@@ -30,7 +30,16 @@ OUT="${LAYOUT_AUDIT_OUT:-/tmp/layout-audit-report.json}"
 READY_TIMEOUT_MS="${LAYOUT_AUDIT_READY_TIMEOUT_MS:-240000}"
 
 command -v agent-browser >/dev/null 2>&1 || { echo "חסר agent-browser — התקן: npm i -g agent-browser && agent-browser install"; exit 2; }
+command -v node >/dev/null 2>&1 || { echo "חסר node — נדרש לאימות מקור הבדיקה"; exit 2; }
 [ -f "$FIXTURE" ] || { echo "חסר fixture: $FIXTURE"; exit 2; }
+
+# D-100: reject malformed source before opening the browser. Without this
+# preflight an invalid source leaves the app without a result and looks like
+# a long layout timeout, hiding the actual source defect.
+if ! node "$ROOT/tools/validate-source-structure.js" "$FIXTURE"; then
+  echo "✗ אודיט העימוד בוטל: מקור הבדיקה אינו תקין לפי D-100."
+  exit 2
+fi
 
 rm -f "$OUT"
 

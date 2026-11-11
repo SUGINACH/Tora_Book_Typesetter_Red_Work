@@ -1,5 +1,7 @@
 # WORKLOG.md — יומן עבודה לפי שלב · Tora Book Typesetter Red
-> כלל: כל שלב מתועד עם מה נעשה, ראיות ובדיקות. עדכון אחרון: 10.11.2026 (S6.4 — תיקון אובדן כותרת H5 ושכפול H6 במסלול Legacy/IMUD; סוויטת S6.2 13/13; C1–C12 בקורפוס הארוך 12/12; HARD 4/4; P6/P7 נותרו 12/14 ו-88.9% ללא החמרה; בניית Worker bundles סונכרנה בענף העבודה, אימות CI מלא לאחר הסנכרון מתבצע ב-PR #4).
+> כלל: כל שלב מתועד עם מה נעשה, ראיות ובדיקות. עדכון אחרון: 10.11.2026 (S6.4 — תיקון אובדן כותרת H5 ושכפול H6; C1–C12 בקורפוס הארוך 12/12; CI מלא על commit 78a253 עבר; הייבואים הארכיוניים ומפת ההטמעה עודכנו).
+
+> **הוראת משתמש מחייבת מ־10.11.2026:** P6/P7 הושעו לחלוטין. אין להריץ, לחשב, להציג, לנתח או להשתמש בהם; אין התאמת פסקאות, מילים או שורות ל־PDF היסטורי. כל אזכור/תוצאה ישנים בהמשך היומן הם תיעוד היסטורי בלבד, לא מצב פעיל ולא משימה. אין לחלץ מהם נתונים חדשים או להמשיך לעסוק בהם.
 
 
 ## S4.27 (05.11 — דיווח משתמש "הרבה בעיות שבחינה מדוקדקת של הקוד היתה מגלה": עטיפת שורות בדפדפן)
@@ -2655,3 +2657,493 @@ persistence הכול שקוף; שחזור אחרי תוצאה ⇒ ⚡; ‏boot �
   (13500270249): אותם מספרים בדיוק (706/43,117/685/0) — **העימוד החי זהה
   ביט-לביט בין הפריסות**; ה"704/43,125" שתועד בקובץ-המעבר של S6.0 היה
   משלב ביניים, לא מהאודיט הסופי על הפריסה.
+
+
+## S6.5 — הבהרת מעמד ה-PDF ההיסטורי ומדדי ה-parity (10.11.2026)
+
+**הבהרת בעל הפרויקט:** קובץ ה-PDF שהועלה בשלב מוקדם נועד להמחיש את הכיוון הכללי — יחסים בין אזורי העימוד, סוגי פריסות ומבנה שערים. הוא אינו נקי מטעויות ואינו התוצאה הסופית הרצויה. אין לחקות אותו כמות שהוא.
+
+**בדיקת קוד:** `tools/layout-parity/extract-reference.py` משתמש ב-`audits/דוגמא מגרסא ישנה.pdf` וב-`audits/דוגמא מגרסא ישנה - כולל סימון בלוקים פיסקאות שורות.pdf`, ומפיק `audits/layout-reference.json`. ‏P6 משווה `paragraphSeq` (מספר/ראשי פסקאות/שורות/מילים); P7 משווה רצפי שורות מנורמלים. P1–P9 כולם מודדים התאמה ל-PDF הישן, לרבות מספר עמודים, רצפי שערים/TOC, עמודונים, גיאומטריה, גופן ופס שורות.
+
+**הכרעה:** לפי D-98, כל המדדים האלה הם השוואה היסטורית/דיאגנוסטית בלבד. אין להשתמש בכישלון P6/P7 כהוראה לשנות את המנוע או כמדד איכות סופי. ערכים גיאומטריים יכולים לשמש מועמדים למחקר בלבד, עד לאישור במפרט התוצאה הרצויה. ה-parity נשמר כ-artifact מידע, אך ציון Legacy לא יחסום CI. בדיקות נכונות עצמאיות — שימור תוכן, סדר קריאה, אפס חפיפות/גלישות בלתי מותרות, דטרמיניזם וקורפוס — נשארות נפרדות ומחייבות לפי הגדרתן.
+
+**שינויי תיעוד/תשתית:** נוספו `execution/REFERENCE-INTENT-AND-ACCEPTANCE.md`; README של parity עודכן; ratchet לציון Legacy הוחלף בדיווח אינפורמטיבי; P-10 ב-ISSUE_REGISTRY עודכן בהתאם. לא שונה מנוע העימוד או אלגוריתם ההשוואה.
+
+**השלב ההנדסי הבא:** להפיק מפרט תוצאה רצויה עצמאי מתוך הדרישות המפורשות של המשתמש, ולסווג כל פרמטר כמאושר/מועמד/דורש הכרעה. רק לאחר מכן להגדיר בדיקות קבלה ולפתוח תיקוני מנוע לפי סטיות מוכחות.
+
+## S6.6 — מדדי layout תלויי-הגדרות אינם אינווריאנטים (10.11.2026)
+
+**המשך להבהרת D-98:** קובצי ה-PDF הישנים הם חומר המחשה/השוואה היסטורית בלבד; אינם מפרט תוצאה סופית ואינם מקור סמכות לשבירת שורות, רצף פסקאות, מספור, סדר שערים, TOC או כותרות. P1–P9 ובפרט P6/P7 אינם יעד איכות או שער קבלה.
+
+**בדיקת עומק של verify-corpus.py:** נמצא כי C5–C8 כללו הנחות ברירת-מחדל שאינן כלליות:
+- C5 — מונה עמודונים והסתרה/ספירה של page types; ה-SRS מאפשר initial-value והגדרות count/show לפי סוג עמוד.
+- C6 — סדר קשיח של שערים, TOC ועמודים ריקים; יש לחשב לפי page-sequence/הגדרות מאושרות ולא להעתיק את הדוגמה.
+- C7 — רמות TOC ועמודונים; תכולה ו-page labels תלויים בהגדרות visibility/grouping/folio.
+- C8 — מקורות כותרת, split title וסלוטים; תלויים בהגדרות הכותרות בפועל.
+
+**הכרעה (D-99):** C5–C8 נשארים בדוח כמדדים מידעיים בלבד ואינם נכללים בציון שערי הקורפוס כברירת מחדל. הם יחזרו להיות שערים רק לאחר שהבודק יחשב ציפייה מתוך ההגדרות האפקטיביות, מול חוזה שאושר, עם fixtures לשתי תצורות לפחות. C4 (יישור) נשאר מידע בלבד; H4 נשאר LEGACY. C9 (שימור כותרות המקור) ו-C10 (שלמות/ייחודיות הערות לפי D-91) נשארים בדיקות תוכן מחייבות לפי הגדרתן.
+
+**תשתית:** compare.py מסווג H4 כ-LEGACY; verify-corpus.py מסמן C4–C8 כ-informational ומוציא אותם מציון שערי האינווריאנטים; README, workflow, תוכנית העבודה, תוכנית חמשת הסוכנים, REFERENCE_AND_ACCEPTANCE_POLICY.md ו-ISSUE_REGISTRY עודכנו. אין שינוי במנוע העימוד.
+
+**אימות CI על הענפים:**
+- RED Work PR #6 — CI: 42779497735; layout-parity: 42779497817; full-math-audit: 42779497822 — כולם success (full-math live job skipped לפי תנאי workflow).
+- RED PR #33 — CI: 42779997341; layout-parity: 42779997376; full-math-audit: 42779997930 — כולם success (full-math live job skipped לפי תנאי workflow).
+
+**סטטוס:** התיקון התיעודי והסיווג הוטמעו בענפי ה-PR; לא מוזגו ל-main. אין להציג הצלחת CI כהוכחה לאיכות חזותית סופית; עדיין דרוש מפרט תוצאה רצויה מאושר ובדיקת עין של בעל הפרויקט.
+
+
+## 10.11.2026 — D-100: תקינות מבנית של מסמך המקור
+
+הוראת המשתמש נוספה כמפרט מפורש: מסמך בדיקה קבוע או רנדומלי, וכל מסמך שמגיע לעימוד, חייב לעמוד בתקינות היררכיית הכותרות לפני שלב המדידה. שרשרת כותרות ללא גוף מותרת רק בקינון עולה; הכותרת העמוקה ביותר חייבת להגיע לטקסט גוף ממשי. הערת שוליים לבדה אינה נחשבת טקסט, וגם כותרת שמורכבת מהערת שוליים בלבד אינה תקינה.
+
+**מימוש בענף** work/reference-intent-clarification:
+- נוסף red-build/src/engine/parser/document-structure.js עם validator ו-DocumentStructureError.
+- pipeline.js מפעיל preflight לפני נתיב DP וגם לפני נתיב Legacy; אין שינוי אוטומטי של המקור.
+- מחולל מסמכי הבדיקה תוקן: רצף H6→H6 לא תקין הוחלף ב-H6→H7; כל פלט קבוע/רנדומלי עובר את אותו validator לפני החזרה.
+- נוספה tests/unit/document-structure.test.js עם מקרי תקין/לא תקין, בדיקת עצירה לפני עימוד, ובדיקת 180 seeds.
+- package.json מחבר את חבילת הבדיקות החדשה ל-test ול-test:unit.
+
+**סטטוס אימות:** הקבצים נכתבו לענף; בדיקות CI של ה-PR טרם הושלמו בעת כתיבת הרשומה. אין למזג לפני בחינת התוצאות. ענף V21 אינו חלק מהשינוי.
+
+
+## 10.11.2026 — D-100 follow-up: negative controls and valid stress corpus
+
+- הופרדו `heading-title-note-only` ו-`heading-title-no-meaningful-text`: כותרת `*` בלבד היא כותרת ריקה מסימן/קישוט, לא הערת שוליים.
+- נוספה `tools/validate-source-structure.js` לבדיקת מקור ללא עימוד, עם `--expect-invalid` לבדיקות שלילה.
+- בדיקות D-83/FWD-4 מצפות לדחייה מפורשת של שני המקורות ההיסטוריים הפגומים; לא שינינו אותם.
+- בדיקת העומס נשארת על `audits/long_test_text.txt` התקין: 291,719 מילים וכ-1,038 עמודים בריצה שנצפתה. בדיקות parity ו-full-math מאמתות תחילה שהקובץ `very_long_test_text.txt` נדחה, ורק אחר כך מעמדות/בודקות את המקור התקין.
+- ה-workflows שונו בהתאם; תוצאות ה-CI של ה-HEAD החדש עדיין נבדקות.
+
+
+## 10.11.2026 — Full Math source-corpus calibration
+
+- תיקון בדיקת FWD-4: הוסר escape כפול ב-`raw.split('\\n')`; כעת הפיצול הוא לפי newline ממשי, כדי לאמת את מספר השורות המקורי.
+- ריצת Full Math על הקובץ התקין `long_test_text.txt` הפיקה במסלול הדפדפן 552 עמודים; רצפת 690 שייכת לקורפוס הישן בן 363K מילים. נוספה אפשרות `--min-pages`; לקובץ זה הרצפה היא 525 (מרווח ~5% מהמדידה), בעוד רצפת שימור המילים נשארת 98% ללא שינוי.
+- `run-full-math.js` משתמש כברירת מחדל בקובץ התקין `audits/long_test_text.txt` וברצפת 525 המתאימה לו; workflows local/live משתמשים באותה רצפה. הקובץ הפגום נשאר בדיקת שלילה נפרדת דרך CLI.
+- ריצות חוזרות הופעלו על HEAD חדש; תוצאות סופיות טרם התקבלו בעת כתיבת הרשומה.
+
+
+## 10.11.2026 — Session 7: D-100, תיקון CI והתאמת תוכניות לגרסת RED Work
+
+**תחום העבודה:** המאגר `SUGINACH/Tora_Book_Typesetter_Red_Work`, ענף `work/reference-intent-clarification` (PR #6). לא שונה `main`, לא שונה המאגר המקורי `Tora_Book_Typesetter_Red`, ולא נערכו קובצי PR #5/Legacy Notes.
+
+### שינויים שנכתבו לענף
+
+- Commit `e963d2d` — ה-fixture `mkDoc(90)` של בדיקות עמודי ההערות כולל כעת פסקת גוף ממשית אחרי H1 ולפני הערות הסיום. לא הוחלש `document-structure.js`; כלל D-100 נשאר מחייב.
+- באותו commit, `tools/layout-audit/run.sh` מריץ את `tools/validate-source-structure.js` לפני פתיחת דפדפן. מקור לא תקין נדחה מיד במקום להיראות כ-timeout של עימוד.
+- `.github/workflows/ci.yml` בודק תחילה ש-`audits/very_long_test_text.txt` נדחה כ-negative control, ואז מפעיל את סריקת הדפדפן על `audits/long_test_text.txt` — הקורפוס התקין הגדול (291,719 מילים, כ-1,038 עמודים בריצת DP שנמדדה). קובץ השלילה לא שונה.
+- הערות ה-pipeline וכלי ה-parity נוסחו מחדש כך שפרופיל IMUD מתאר נתיב תאימות, ו-PDF היסטורי מתואר כדוגמת אבחון ולא כמפרט.
+- Workflow `rebuild-worker-bundles` יצר commit אוטומטי `582a04f` שסנכרן את `red-build/ui/engine-worker.bundle.js` עם קוד המקור. בדיקת D-65 בתוך ה-workflow עברה.
+
+### Ledger של הרצות מאומתות
+
+| Run | תוצאה שנצפתה | פירוש |
+|---|---|---|
+| CI `42839053999` | job `layout-audit` עבר — גם smoke וגם הקורפוס התקין הגדול; job `test (20)` נכשל ב-D-65 | ה-CI התחיל לפני commit סנכרון ה-bundle ולכן בדק את HEAD `e963d2d` מול bundle ישן. שרשרת הבדיקות נעצרה ב-S10; בדיקות S5.2 לא הגיעו לריצה זו. |
+| Rebuild bundles `42839054165` | success; D-65 עבר; נוצר `582a04f` | ה-bundle נבנה מהמקור ונשמר ב-branch. |
+| Layout Parity `42839054343` | success; HARD ‏3/3; legacy PARITY ‏12/14; ציון 88.2% | הצלחת ה-workflow פירושה שהאבחון והאינווריאנטים הקשיחים עברו. P6/P7 עדיין מציגים הבדלים היסטוריים ואינם שער קבלה לפי D-98. |
+| Full Math `42839054444` | `local` היה עדיין `in_progress` בבדיקה האחרונה | אין לרשום הצלחה עד שתתקבל תוצאה סופית. |
+
+**ריצות follow-up על HEAD `582a04f`**: ‏CI `42839116264`, Full Math `42839114053`, Layout Parity `42839114226` ו-Rebuild `42839113950` הוחזרו כ-`action_required`, ללא jobs שהתחילו. נדרש אישור ידני בממשק GitHub; אין פעולת אישור זמינה דרך החיבור הנוכחי. לכן אין כרגע CI מלא ירוק על HEAD העדכני.
+
+### ממצאים שנותרו פתוחים
+
+1. בדיקת `s52-dp-fixes` עברה 23/23 ב-CI על `e9ace9d`; בדיקת `s52-ui-fixes` עברה 17/18 ונכשלה רק ב-fixture האחרון, שהיה חסר פסקת גוף לפי D-100. ה-fixture תוקן ב-commit `53834bc` (יחד עם עדכון רשומה זו); עדיין נדרשת ריצת CI על HEAD החדש כדי לאשר את התיקון.
+2. סשן 6 תיעד פגם בסדר הקריאה של כלי הייחוס: איסוף כל פסקאות הטור הימני ואחריו כל פסקאות הטור השמאלי משבש עמודים שיש בהם כמה `block-2col` וביניהם H3. הדבר עלול להסביר חלק מפערי P6/P7; אין מכך ראיה לבאג במנוע. נדרש תיקון נפרד ל-`extract-reference.py`/מודל האזורים, בדיקות לעמודים מרובי אזורים וחילוץ דטרמיניסטי מחדש — לפני שמסיקים מסקנות מנוע.
+3. ה-Full Math על הקורפוס התקין עדיין לא קיבל תוצאה סופית בזמן כתיבת הרשומה.
+4. מסמך `02_MASTER_WORK_PLAN.md` הוא מסמך שלבי Unified היסטורי; תיבותיו אינן סטטוס עדכני. תוכנית RED Work עודכנה לתקן את הקורפוס ולציין את המאגר הפעיל.
+
+### סדר הפעולות הבא
+
+1. לאשר בממשק GitHub את ריצות CI/Full Math/Layout Parity על HEAD העדכני, ואז לקרוא את כל ה-logs וה-artifacts. בפרט לאמת ש-`s52-dp-fixes.test.js` עובר ושכל שלוש גרסאות Node משלימות את השרשרת.
+2. לאמת את תוצאת Full Math ואת דוח אודיט הדפדפן על אותו HEAD.
+3. לפתוח משימת כלי-ייחוס מבודדת: לשמר מזהי/מיקומי אזורי זרימה, לשייך פסקאות לאזור, ולבנות סדר `paragraphSeq` ו-`reading_lines` לפי בלוקים, עם H3 במיקומו. אין לשנות מנוע במסגרת התיקון הזה.
+4. לאחר תיקון כלי ההשוואה, להפיק מחדש דוח P6/P7 ולהשתמש בו כאבחון בלבד; תיקוני מנוע ייפתחו רק נגד הפרת דרישה עצמאית מוכחת.
+
+**גבול חשוב:** לא בוצע merge של PR #6, לא בוצע שינוי בענפי PR #5/#2, ולא נערך שינוי ב-`V21` או ב-`V23`.
+
+
+### Session 7 follow-up — תיקון fixture S5.2 UI (10.11.2026)
+
+ריצת CI על HEAD `e9ace9d` הגיעה מעבר ל-D-100, D-65 ולבדיקת `s52-dp-fixes` (23/23), אך נכשלה בבדיקה `s52-ui-fixes` (17/18). מקור הכשל: הדבקת הבדיקה האחרונה השתמשה ב-`ספר - חדש / כותרת 1 - חלק` ללא פסקת גוף. לפי D-100 זה מסמך לא תקין; ה-validator דוחה את העימוד ולכן `st.gen` אינו גדל. אין כאן כשל במנגנון paste ואין לשנות את validator. תוקן ה-fixture בלבד על ידי הוספת פסקת גוף ממשית. אימות מלא ממתין לריצת CI על ה-HEAD החדש.
+
+קישור ראיה: CI `42840314777` — `s52-dp-fixes` 23/23; `s52-ui-fixes` 17/18, כשל בבדיקה זו בלבד.
+
+
+### Session 7 follow-up — התאמת fixtures של S6.0 ל-D-100 (10.11.2026)
+
+CI על HEAD `53834bc` אישר `s52-dp-fixes` ‏23/23 ו-`s52-ui-fixes` ‏18/18, אך עצר ב-`s60-monster-fixes` עם שתי דוגמאות מקור לא תקינות: (1) F6 הכיל H1 ולאחריו שלוש כותרות H2 רצופות ללא גוף ביניהן; (2) R3-C1 הסתיים בכותרת H3 ללא פסקת גוף. אין לרכך את D-100. תוקן fixture F6 כך שכל כותרת מקבלת טקסט גוף, והבדיקה כעת מייצרת במכוון עמוד TOC ביניים דליל ומחייבת לפחות מקרה מתיחה אחד (במקום assert טריוויאלי `stretched >= 0`). תוקן fixture R3-C1 כך שכותרת H3 האחרונה מלווה בפסקת גוף אמיתית, והבדיקה בודקת שימור של שניהם.
+
+שינויי הבדיקה בלבד; אין שינוי במנוע, במאמת או בהתנהגות הייצור. נדרש CI חדש כדי לוודא שהתרחיש המוגדל של F6 אכן יוצר עמוד ביניים מתוח ושסוויטת S6.0 עוברת.
+
+
+הערת תיקון עריכה: ב-fixture F6 הוסדר גם מפריד הפסקאות למחרוזת newline ממשית (ולא backslash+n מילולי), כדי שהבדיקה תפעיל את הטוקניזציה והיררכיית הכותרות כפי שהתכוונו.
+
+**מזהי commits לתיקון S6.0:** `18c8e203` עדכן את שני ה-fixtures; `b036c220` תיקֵן את מפריד השורות ב-fixture F6 כך שיישמרו newline אמיתיים. ריצת CI `42841577553` נוצרה על HEAD `80d4723`, לפני שני commits אלה, ולכן כשליה ב-F6/R3-C1 אינם בדיקה של התיקון. אין עדיין ריצת CI סופית על `b036c22` בזמן רישום זה.
+
+
+### Session 7 — תוצאות ריצת ה-HEAD לפני תיקוני S6.0 והסטטוס הנוכחי
+
+בריצת Actions על `53834bc`:
+- CI `42841234618`: `layout-audit` עבר; `s52-dp-fixes` עברו 23/23; `s52-ui-fixes` עברו 18/18. בהמשך הסוויטה נעצרה ב-`s60-monster-fixes` עקב שני fixtures לא תקינים לפי D-100 (F6, R3-C1).
+- Full Math `42841234587`: job `local` הסתיים success; job `live` דולג לפי תנאי ה-workflow.
+- Layout Parity `42841234711`: success; תוצאה זו אינה הופכת את P6/P7 ההיסטוריים לשערי קבלה.
+- Rebuild Bundles `42841234517`: success.
+
+אחרי ריצה זו תוקנו fixtures של F6/R3-C1 ב-`18c8e20`, מפריד השורות של F6 אומת ותוקן ב-`b036c22`, ונוסף הבהרת תיעוד ב-`4e083ac`. ריצת CI `42841577553` על `80d4723` קדמה לתיקוני S6.0 ולכן אינה מאמתת אותם. ה-Full Math `42841577839` על אותו HEAD עדיין היה in_progress בבדיקה האחרונה. ה-HEAD הנוכחי הוא `4e083ac`; לא התקבלה עדיין ריצת Actions המשויכת ל-HEAD זה. לכן סטטוס PR #6 נשאר **לא מאומת במלואו** ולא מוכן למיזוג.
+
+
+## Session 8 — ייבוא נתונים בטוח ומיקוד בין-ריפואי (10.11.2026)
+
+**הוראת משתמש:** P6/P7 הושארו לחלוטין מחוץ למסלול העבודה. אין להריץ, לחשב, להציג, לנתח או להשתמש בהם — ובפרט אין התאמת מילים/שורות/פסקאות. ההוראה הוטמעה ב-`spec/REFERENCE_AND_ACCEPTANCE_POLICY.md`, בתוכנית הראשית, בתוכנית הסוכנים וב-workflow הפעיל.
+
+### שינויים שהושלמו
+
+1. **IMUD Makom Bina v20.5 — data-only import**
+   - ארבעה קובצי JSON הועברו ל-`red-build/ui/assets/imud/presets/makom-bina-v20.5/`.
+   - כל הקבצים עברו JSON.parse ובדיקת 249 מפתחות. default_settings זהה byte-for-byte ל-fixture הקיים; שלוש ערכות הסגנון נבדלות מהערכות הרגילות ונשמרו בנפרד.
+   - המקור ננעל ל-`IMUD_TORANI@da31142ed868da987b14af5213b41495e81733c4`; commit RED Work `bb5996e`.
+   - אין טעינה או הפעלה אוטומטית; אין שינוי בקוד או בהגדרות הפעילות.
+2. **Gold V21 trigger corpus — archive-only import**
+   - עשרת קובצי `test-triggers` הועתקו ל-`red-build/tests/fixtures/legacy-trigger-corpus/gold-v21/` ללא טרנספורמציה. Git blob IDs נבדקו ונמצאו זהים למקור.
+   - המקור ננעל ל-`Gold@a444d34ccad30fd5ed0d6fd3873adbe9c23cb7e0`; commit RED Work `78d0597`.
+   - לא חוברו ל-CI או ל-`npm test`, ולא הורצו; README בתיקייה מתעד את מגבלות התחביר והצורך בהתאמה ל-D-100.
+   - runner/generator הישנים לא הועתקו כי הם תלויים ב-iframe וב-API של Gold.
+3. **P6/P7**
+   - commit `97d8659` מסיר את comparator ההיסטורי ממסלול Actions הפעיל ומשנה את שם ה-workflow ל-`layout-invariants`.
+   - נשמרים מסלול RED החי, האודיט העצמאי ובדיקות הקורפוס C1–C12. ה-workflow אינו מחלץ עוד PDF היסטורי או מפיק דוח legacy.
+   - `verify-corpus.py` מייבא עדיין פונקציות עזר טהורות מתוך `compare.py` לצורך חישובי C; אין הפעלה של נקודת הכניסה של comparator ואין חישובי P6/P7. פירוק התלות הטכנית הזאת ייעשה רק אם יידרש, בלי להחזיר את המדדים.
+
+### סיווג מקורות (ראשוני)
+
+- **כבר קיים ב-RED:** ספריית גופנים IMUD והקטלוג המורחב, ornaments/dividers/shaar assets, שלוש ערכות הסגנון הרגילות, IMUD migration + source-variant tests, worker, DOCX, export, settings persistence, test-document generator, audit/ledger/trace ויכולות מנוע שהוסקו מ-Gold/Green.
+- **יובא כעת בבטחה:** preset Makom Bina v20.5 (נתונים בלבד); קורפוס Gold V21 (ארכיון לא-פעיל).
+- **דורש gap analysis לפני ייבוא:** Gold step-by-step audit / audit-expansion / text-integrity; Yellow engine-inputs/trace/diagnostics; כלים ליצירת דוחות screenshots של Green; generator/runner של Gold; בדיקות legacy נוספות.
+- **לא להעתיק ישירות:** geometry-audit CLI מ-Green הקשור ל-renderer ישן; מנועי TypeScript/React, Kotlin ו-Rust; Orange כקו בסיס שכבר משולב; Red_Work_2 כעותק אח/השוואה בלבד.
+
+### החלטות בטיחות
+
+- לא שונה קובץ מנוע או הגדרה פעילה במהלך שני ייבואי הנתונים.
+- לא נוספו fixtures ל-CI ולא הורצו קבצי Gold; אין בדיקה כבדה נוספת שנדרשת כדי לקבל את הנתונים בארכיון.
+- כל ייבוא נוסף יכלול מקור commit, path מקור, hash/blob, נתיב יעד, סטטוס התאמה והצהרה מפורשת אם הוא פעיל או ארכיוני.
+
+המשך העבודה לפי `spec/CROSS_REPOSITORY_IMPORT_PLAN.md`.
+
+
+### Session 8 follow-up — חסימת נקודות הכניסה של כלי הייחוס (10.11.2026)
+
+- ה-README של `tools/layout-parity/` סומן ARCHIVE ONLY; פקודות ההרצה הישנות הוסרו והובהר שה-workflow הפעיל הוא בדיקות RED עצמאיות בלבד.
+- נקודת הכניסה של `compare.py` נחסמה בקוד יציאה 2; פונקציות העזר נשארו זמינות לייבוא פנימי בלבד.
+- נקודת הכניסה של `extract-reference.py` נחסמה בקוד יציאה 2 כדי שלא ניתן יהיה לייצר חילוץ/JSON היסטורי חדש בטעות.
+- `verify-corpus.py` תיעד במפורש שהוא מייבא רק פונקציות עזר טהורות לצורך בדיקת PDF של RED מול מקור הקלט; אין הפעלת comparator ואין P6/P7.
+- לא שונו חישובי C1–C12, ה-parser, ה-DP, ה-Worker או ה-renderer. נשמרה תלות העזר הקיימת כדי לא ליצור רגרסיה בבדיקת הקורפוס.
+
+
+## Session 9 — השלמת מפת הייבוא, סוויטת IMUD ו-audit gap (10.11.2026)
+
+### 1. אימות CI על הקוד הפעיל
+
+ה-commit `78a253191e586484f203695149fba2b29925f461` עבר את ארבעת ה-workflows הבאים:
+
+| Workflow | Run ID | תוצאה וראיות |
+|---|---:|---|
+| CI | 42860938151 | success; layout-audit smoke + largest valid corpus; Node 18/20/22; 670 tests / 33 files + scan-control triggers; determinism success |
+| layout-invariants | 42860938648 | success; D-100 negative control, largest valid corpus, RED live path, C1–C12 ויצוא HTML/PDF |
+| rebuild-worker-bundles | 42860938317 | success; rebuild/commit synchronization ו-D-65 determinism |
+| full-math-audit | 42860938175 | local success; live job skipped לפי תנאי ה-workflow |
+
+לאחר commit זה נוספו מסמכי תכנון וקובצי archive בלבד; לא שונו `red-build/src/**`, `red-build/ui/**`, workflows או בדיקות פעילות. לא נדרשה הרצת full-corpus חוזרת עבור פעולות התיעוד/ארכיון.
+
+### 2. השלמת ארכיון המקורות
+
+- ארכיון המקורות כולל כעת 75 קבצים + README תחת `reference-archive/cross-repo-2026-11-10/`.
+- האינדקס `README.md` מפרט source ref, commit, original path ו-Git blob לכל קובץ. כל קובץ הועתק byte-for-byte וה-blob אומת מול מקורו.
+- נוספה סוויטת layout היסטורית של IMUD: 8 קבצים הכוללים scenario generator, baseline, runner, checker, browser helper ושני קובצי קלט. הסוויטה נשמרה בארכיון בלבד ולא הורצה.
+- baseline ה-IMUD שבמקור מכיל 38 שמות תרחיש. README המקור אומר 21; הסתירה תועדה. אין להשתמש ב-page counts/violation counts של baseline כציפיות RED.
+- FWD-4 הוא פריט אחר: הקורפוס הארוך המקורי בן 5,702 השורות כבר יובא ל-fixture פעיל ונבדק; אין לבלבל בינו לבין סוויטת layout ההיסטורית.
+
+### 3. מסמכי הייבוא וה-provenance
+
+- `spec/CROSS_REPOSITORY_IMPORT_PLAN.md` עודכן בסטטוסי ההטמעה בפועל: מה קיים, מה הועבר, מה ארכיוני ומה מחייב adapter.
+- `PROVENANCE.md` עודכן: 75 קובצי archive, סוויטת IMUD 38 scenario baseline, מצב Makom Bina בפועל והגבולות של כל ההעברות.
+- `reference-archive/.../README.md` עודכן עם אינדקס IMUD הנוסף וספירה מדויקת של 75 קובצי מקור.
+
+### 4. Step-by-step audit
+
+- `spec/STEP_BY_STEP_AUDIT_GAP_ANALYSIS.md` מגדיר את הפער היחיד שנותר ביחס לשיטות Gold/Orange/Yellow: אין עדיין snapshots/deltas מלאים של כל רכיבי העמוד והאחים בחלון issue-centric.
+- RED כבר מחזיק EventLog, Ledger עם 10 מצבי lifecycle, candidate/capacity/rollback evidence, diagnostics-v2 ו-Testing UI. אין הצדקה להקים logger/trace שני.
+- תכנית המימוש מתחילה ב-reducer טהור על מודל RED; רק אחר כך instrumentation opt-in לעמודים שנפגעו. לא מוסיפים DOM measurement או snapshot כבד במסלול רגיל.
+
+### 5. Makom Bina v20.5 — פער UI שנשאר
+
+- ארבעת JSONs נמצאים ב-`red-build/ui/assets/imud/presets/makom-bina-v20.5/`, עם 249 מפתחות בכל קובץ.
+- ה-loader הפעיל עדיין טוען רק את שלוש ערכות הסגנון הרגילות מתוך `assets/imud/setting_sets/`; נתוני Makom Bina אינם נגישים כרגע בבורר.
+- השלב הבא הוא קבוצת preset נפרדת עם מקור/גרסה, preview והחלה מפורשת. אין שינוי default ואין החלפת הקבצים הרגילים.
+
+### 6. P6/P7
+
+ההשעיה המלאה נותרת בתוקף. אין ליצור, להפעיל או להציג מדדים/בדיקות/משימות אלה. אין התאמת פסקאות, מילים או שורות. האזכורים ההיסטוריים ביומן נשארים רק כרשומה לא-פעילה ואינם הנחיות.
+
+
+### Session 8 follow-up — הפעלת נתוני Makom Bina ובדיקת loader
+
+בדיקת הקוד הראתה שה-UI וה-loader עבור `makom-bina-v20.5` כבר היו קיימים לפני ייבוא הנכסים: `imud-library.js` רושם preset מבודד, ו-`settings-panel.js` מציג preview ויישום מפורש בלחיצה. ארבעת קובצי הנתונים שהועברו ממלאים כעת את נתיבי הטעינה שהקוד כבר מצפה להם. לכן לא נוספה שכבת UI ולא שונה pipeline.
+
+נוספה `red-build/tests/integration/setting-presets.test.js` ונוספה לשרשרת `npm test`. הבדיקה מוודאת את רשימת ארבע האפשרויות, טעינה דרך `createImudLibrary.loadSettingPreset`, 249 מפתחות בכל קובץ, אפס unmapped, חשבונאות מלאה של כל מפתח, שימור `_imudRaw`, נתיבים מבודדים ודחיית מזהי preset/ערכה לא מוכרים. היא אינה קוראת ל-`typeset` ואינה משנה את המנוע. README ו-CROSS_REPOSITORY_IMPORT_PLAN עודכנו כדי לתאר את מצב ההפעלה הנוכחי במדויק.
+
+
+### Session 8 follow-up — תיקון בדיקת Makom Bina (10.11.2026)
+
+CI על commit `29f541e` הריץ את הסוויטה החדשה: שתי בדיקות עברו, ובדיקת טעינת ארבע הערכות נכשלה עם `profile is not defined`. בבדיקה התגלה שהביטוי `loaded.settings._layout-profile` נכתב בנקודה; JavaScript פירש אותו כחיסור וביקש משתנה בשם `profile`. זו טעות בתחביר הבדיקה בלבד, לא תקלה ב-loader ולא בקוד הייצור. תוקן ל-`loaded.settings['_layout-profile']` ב-commit `455d800`. נדרשת ריצת CI חוזרת כדי לאמת את כל ארבעת הקבצים ואת כל מטריצת Node.
+
+
+### Session 10 follow-up — archive completeness, Makom Bina status and CI correction (11.11.2026)
+
+#### Archive inventory and provenance reconciliation
+
+- Audited the complete Git tree under `reference-archive/cross-repo-2026-11-10/`, not only the index table.
+- The subtree contains 89 tracked files in total: 78 distinct upstream source files, 9 duplicate path-preserving copies with blob IDs identical to their canonical copies, one archive-local IMUD scenario guide, and the archive index README.
+- Three unique upstream documents were present in the tree but absent from the 75-source index: React `docs/conventions/work-conventions.md`; Typesetter_doc `chatgpt_v23/session/Session_handoff.md`; Typesetter_doc `shared/research/Functional_gaps_analysis.md`. Each destination Git blob was fetched from the archive and matched against the exact source commit/path.
+- The nine repeated paths under Typesetter_doc's `chatgpt_v23/` and `shared/` directories were compared by blob ID to the indexed `v23/`, `plans/` and `research/` copies. They are byte-identical aliases, not nine additional source documents.
+- `imud-main/layout-scenarios/README.md` is an archive-local explanatory guide, not a source file from IMUD; the original source README is separately preserved as `imud-main/README-tests.md`.
+- Updated the archive index, cross-repository import plan, PROVENANCE and step-audit gap analysis to distinguish source documents, duplicate aliases and local archive documentation. No archived source bytes were changed.
+
+#### Makom Bina v20.5 and failed CI investigation
+
+- Rechecked `imud-library.js` and `settings-panel.js`: the isolated `SETTING_PRESETS` registry, picker, source/version display, preview and explicit Apply action already exist. The four imported JSON files complete their expected asset paths; there was no need to add a second UI layer or touch the typesetting pipeline.
+- The PR workflow on old HEAD `3ef4d27a1289c20725752f1ab5c02e06ca576253` showed `setting-presets` at 2/3. The loader fetched the asset; the failing assertion compared a decoded request path against an encoded Hebrew filename.
+- Corrected only `red-build/tests/integration/setting-presets.test.js` in commit `31e7b4cf6e9c3e348c26646ced57980550b8e267`. No engine, UI, runtime asset, renderer, worker or layout workflow code was changed by this fix.
+- CI for the corrected HEAD must be checked separately; the previous failure is not represented as a pass. The PR head remains unmerged and the original RED repository is untouched.
+
+#### Safety boundary
+
+- No P6/P7 calculation, execution, report, line/word/paragraph comparison or task was performed or reintroduced.
+- No legacy renderer, layout harness, or archived trigger runner was executed.
+- These changes are documentation/index reconciliation plus a targeted test assertion correction. They do not alter layout output or active settings.
+
+
+## Session 11 — השלמת אימות CI ומיפוי כיסוי סמנטי (11.11.2026)
+
+### 1. אימות HEAD ו-PR
+
+ה-HEAD `0d8dae7b55d5cdf03686faf21cdaf026ef6bade9` אומת מול Actions. כל ארבעת ה-workflows הסתיימו בהצלחה:
+
+| Workflow | Run ID | Result |
+|---|---:|---|
+| CI | 42935729134 | success |
+| layout-invariants | 42935729131 | success |
+| rebuild-worker-bundles | 42935729276 | success |
+| full-math-audit | 42935729156 | success |
+
+PR #6 נשאר פתוח מול `main`, לא מוזג, ו-GitHub דיווח `mergeable=true`. לא בוצע מיזוג.
+
+### 2. מטריצת כיסוי סמנטי
+
+נוצר `spec/IMPORT_FIXTURE_SEMANTIC_COVERAGE.md`. המסמך ממפה:
+- את כל 11 קובצי React line-battery מול parser/typography/E2E של RED.
+- את עשרת Gold V21 trigger fixtures מול RED tests ומצבי D-100.
+- את ממדי סוויטת IMUD layout-scenarios מול בדיקות RED הקיימות.
+- את התאמת screenshot helper של Green, חוזי Yellow ו-step-by-step audit למבנה RED הנוכחי.
+
+המיפוי מפריד בין מנגנון שכבר נבדק לבין fixture מקור מדויק שלא נבדק. מועמדים לפער — BiDi מעורב, ניקוד/טעמים, מקפים, whitespace, page-underfill חיובי ו-sparse-line — מתועדים כפערי בדיקה אפשריים בלבד, לא כבאגי מנוע.
+
+### 3. חסמי ייבוא שנמצאו
+
+- Gold משתמש בכותרות `כותרת N מספר K - ...`; ה-lexer של RED מקבל `כותרת N - ...`. לכן יש ליצור נגזרת RED ולא להזין את המקור ישירות.
+- `test-all-triggers.txt` מכיל רצף של כותרות H3 מאותה רמה ללא טקסט גוף; יש לסווגו כמקור לא תקין לפי D-100.
+- ה-helper הישן ל-PDF מצילומי Green מצפה ל-manifest שאינו מיוצר ב-RED, כולל שדות schema אחרים והחרגות DOM קשיחות. אין להעתיקו לפני הגדרת producer/manifest של RED.
+- RED כבר כולל EventLog/Ledger/trace ו-`diagnostics-v2`; מיפוי Yellow ו-reducer ל-step-by-step audit צריכים להיבנות עליהם, לא כמערכת מקבילה.
+
+### 4. גבול השינויים
+
+במהלך Session 11 לא שונו parser, typography, planner, renderer, Worker או settings runtime. לא הורצו legacy harnesses ולא חוברו fixtures ארכיוניים ל-CI. השינויים הם מסמכי תכנון/כיסוי בלבד; המקורות הארכיוניים נשארו byte-identical.
+
+
+## Session 12 — השלמת Yellow contract gap analysis (11.11.2026)
+
+### 1. אימות בסיס
+ה-HEAD הקודם `13c142360abeff4b68c8121a6286bd5183bca4d5` עבר את כל ארבעת ה-workflows:
+- CI — `42939104860`, success.
+- layout-invariants — `42939106743`, success.
+- rebuild-worker-bundles — `42939105044`, success.
+- full-math-audit — `42939104870`, success.
+
+### 2. מיפוי Yellow
+נוצר `spec/YELLOW_DIAGNOSTICS_CONTRACT_GAP.md`. המיפוי קובע:
+- settings אינם נקראים מ-DOM במהלך RED typeset; ה-pipeline מעתיק את ברירות המחדל וה-overrides בתחילת run. לכן אין לייבא `EngineInputs.beginRun/endRun` או frozen DOM controls.
+- חסר fingerprint קנוני ברמת הריצה ל-settings האפקטיביים, וכן manifest ברור של גופנים שנדרשו/נרשמו/שימשו ומה נכשל או נפל ל-fallback.
+- `contentHashIn` הוא hash של token model לאחר parsing/normalization, לא hash של מקור גולמי.
+- EventLog/Ledger/diagnostics-v2 קיימים ומשמשים מקור אמת יחיד; Yellow's global wrappers ו-DOM rectangles אינם מתאימים.
+- קיים פער שקיפות ספציפי: `trace-verbosity=off` מחזיר events ריקים ללא metadata מפורש שמבדיל איסוף כבוי מאיסוף שלם ללא אירועים.
+- חסר חיבור issue-centric בין finding ל-operation/checkpoint ול-deltas של יתר רכיבי אותו עמוד. זהו הפער העיקרי של step-by-step audit.
+
+### 3. תכנית יישום מדורגת
+ההמלצה היא להוסיף ל-RED בלבד ובסדר הבא:
+1. metadata ל-`trace-v2` שמציין recording/verbosity/completeness.
+2. Run Input Manifest טהור עם canonical settings hash ו-font manifest.
+3. StepAudit reducer טהור על snapshots/deltas ומקרי identity/split/merge.
+4. רק אחר כך operation/checkpoint IDs וקישור לממצאי Ledger.
+5. instrumentation opt-in של מודל העמוד רק אם ה-reducer מוכיח שהאירועים הקיימים אינם מספיקים.
+6. תצוגת issue-centered ב-Testing Tab לאחר ייצוב הסכמה.
+
+אין להוסיף Yellow runtime, global monkey-patching או DOM snapshots. אין שינוי parser/DP/renderer/Worker בסשן זה; מסמכי המקור וה-fixtures נשארו בלתי משתנים.
+
+
+## Session 13 — שיטת RED ל-Step-by-Step Audit (11.11.2026)
+
+### 1. אימות source/bundle
+- שינוי trace capture metadata הוכנס ב-`69a80232e3fe7a70fb564eb047c833ec7df7584e`.
+- `rebuild-worker-bundles` רץ בהצלחה על source commit זה ויצר commit אוטומטי `fdcdfda350b0beb2b766810dc2de1ede22eec9ea` עם עדכון `red-build/ui/app.bundle.js` ו-`red-build/ui/engine-worker.bundle.js`.
+- ארבעת ה-workflows שהופעלו בעקבות commit הבוט סומנו `action_required` (43048913770, 43048913567, 43048914001, 43048913900). אין להציג זאת כהצלחה או ככשל בדיקה; נדרשת פעולת אישור GitHub כדי שהריצות יתחילו.
+
+### 2. מסמך שיטה חדש
+נוצר `spec/step-by-step-audit-Method.md` כמפרט RED עצמאי, נפרד מהשיטה הארכיונית של Gold. הוא כולל:
+- זהות ריצה, checkpoint, עמוד ואלמנט;
+- מלאי מלא של כל האלמנטים בעמוד הממצא;
+- delta של added/removed/moved/resized/restyled/reparented/split/merged;
+- issue windows עם before/after, ניסיונות תיקון, side effects ו-Ledger lifecycle;
+- רף ראיות נפרד ל-created-by-stage, correction-blocked, correction-reverted, became-observable-later ו-competing-repair-side-effect;
+- הבחנה בין status של issue, delta של element ו-kind של finding;
+- אפשרויות כיוונון כאשר הסיבה אינה מתגלה, תוך הרחבה מדורגת ומדידת completeness;
+- קריטריוני קבלה ותקציב ביצועים.
+
+### 3. גבול ביצוע
+זהו מפרט, לא מימוש מלא. לא נוספו עדיין checkpoints למנוע ולא נוצר reducer. השלב הבא הוא reducer טהור על snapshots/deltas סינתטיים, לפני instrumentation במנוע. אין DOM snapshots, global monkey-patching או rerun היסטורי.
+
+
+## Session 14 — הרחבת ה-reducer ובדיקת תקלת CI תשתיתית (11.11.2026)
+
+### 1. Pure StepAudit reducer
+נוסף ב-commit ba233987f330002e8a70dfcc71ffd696f316c060:
+- red-build/src/engine/audit/step-audit-reducer.js
+- red-build/tests/unit/step-audit-reducer.test.js
+- חיבור בדיקות ה-reducer ל-npm test ול-test:unit.
+
+בביקורת הקוד נמצאו ונוקו over-classifications: היעלמות target לאחר ממצא פעיל מובילה ל-not-comparable; correction-reverted דורש active→absent→active יחד עם מעברי Ledger; side effect דורש שינוי capacity ו-sibling delta מזוהה.
+
+ב-commit 2bfb72450d9a0c81fa4609f943bc6d9acb67eda5 הורחב ה-delta:
+- textChanged בנפרד מ-restyle ומגאומטריה.
+- pageMoves לזיהוי מעבר של elementId יציב בין pageIds.
+- split/merge רק כאשר lineage מוכיח החלפה של ישויות קיימות בישויות חדשות, ולא על סמך annotation בודד.
+- serialization קנוני של undefined בתוך arrays.
+
+ה-reducer נשאר מבודד: אין import ב-pipeline/Worker, אין שינוי layout, ואין snapshots של מסמך אמיתי. נדרש adapter מהמודל הקיים, משום שה-Ledger הנוכחי מספק page מספרי ו-target טקסטואלי בלבד; הם אינם תחליף ל-pageId/elementId יציבים.
+
+### 2. תוצאות CI וגורם הכשל ב-11.11
+על HEAD 91b38c3ccdf83eca552d8fa3c6acd6104f59dc98:
+- rebuild-worker-bundles — success.
+- layout-invariants — success; בדיקת הקורפוס הגדול, ההרצה הדטרמיניסטית ו-C1–C12 עברו.
+- CI — failure; Full Math Audit — failure בניסיון הראשון.
+
+בדיקת job logs הוכיחה שהכשל היה בשלב התקנת dependencies דרך apt, עקב Temporary failure resolving מול azure.archive.ubuntu.com, archive.ubuntu.com ו-security.ubuntu.com. ה-jobs לא הגיעו להרצת בדיקות המנוע/עימוד. שני shards של CI בוטלו ב-fail-fast.
+
+ניסיון חוזר:
+- Full Math Audit, attempt 2 — success.
+- CI, attempt 2 — עדיין נכשל; יש לבדוק אם אותה תקלה תשתיתית חזרה ומה מצב ה-shards שלא רצו.
+- על HEAD החדש 2bfb7245 הופעלו מחדש CI, layout-invariants, full-math-audit ו-rebuild-worker-bundles (run IDs: 43068300000, 43068300033, 43068300037, 43068300102). בעת עדכון זה הריצות היו in progress; אין לסמן אותן כהצלחה עד לקבלת conclusion.
+
+### 3. גבול העבודה הבא
+1. למפות את מבני pages/columns/lines/notes וה-Ledger של RED כדי להחליט אם קיימים IDs יציבים או שצריך לייצר מזהי fragment/page סמנטיים.
+2. לכתוב adapter טהור שמקבל תוצאת RED plain-JSON ומפיק snapshots מנורמלים ל-reducer; לא להחדיר IDs על בסיס page index או טקסט משוער.
+3. לכתוב בדיקות adapter על model fixtures, כולל מעבר page, הערות, כותרות, עיטורים, full-width blocks ופיצול/מיזוג.
+4. רק לאחר התאמה מוכחת: לקשור operation/checkpoint ל-Ledger, ואז לשקול instrumentation opt-in.
+5. UI issue-centered נשאר לאחר ייצוב schema.
+
+אין שינוי parser, DP, typography, renderer או ברירות מחדל בסשן זה. כל חומרי הארכיון נשארו בלתי משתנים. P6/P7 נשארים מחוץ לתחום.
+
+
+## Session 15 — חיבור מיפוי סוגריים ושימור מקור מילה (12.11.2026)
+
+### 1. מצב הענף וה-PR
+העבודה נמשכה ב-work/reference-intent-clarification; PR #6 נשאר פתוח ולא מוזג. ה-HEAD בעת כתיבת עדכון זה הוא 00eeb8546eb79fdcc2c5f3ff2a7252c5ed3118ee. אין מיזוג ל-main ואין שינוי לריפו RED המקורי.
+
+### 2. תיקון target בפורמט Ledger בפועל
+ה-Ledger.create שומר ברשומה target=pN@tN (ה-prefix paren@pN@tN שייך ל-violation object שמוחזר מ-CHECKS, לא לרשומת ה-Ledger). בתחילה זוהו שני הפורמטים בטעות כזהים; התיקון הסופי מחזיר את ה-adapter להתאמה ל-pN@tN ומותאם מחדש ב-unit/E2E.
+
+### 3. שימור מקור מילים אחרי תיקון שורה
+נוסף ב-commit 99249ef8:
+- pipeline.js מצמיד sourceWordRefs רק לפסקאות עם טווחי סוגריים שמספר מילותיהן לאחר שבירת שורות תואם במדויק למילות המקור.
+- fixDropWordInColumns מעביר את ה-references יחד עם המילה שעוברת לשורה הבאה.
+- מיפוי טווח הסוגריים לאחר DP מחפש את מילות ההתחלה והסיום לפי tokenId+wordIndex, ולא מניח שהמילה עדיין בשורה המקורית.
+- ה-references אינם משתתפים ב-layoutHash או bodyGeometryHash; אין שינוי במדידה, שבירת שורות, איזון או renderer.
+- parenSpans מחושבים גם כאשר paren-style-scale=1. הסקייל עדיין שולט רק בהשפעת sentinel על המדידה; עצם ההגנה המבנית אינה תלויה בו.
+
+### 4. תיקון בדיקת CI
+ב-HEAD 6d34c38f וב-HEAD 99249ef8:
+- layout-invariants עבר.
+- rebuild-worker-bundles עבר.
+- full-math-audit עבר/נשאר בתהליך לפי הריצה המתאימה.
+- CI נכשל ב-test shard אחד בלבד בבדיקת marks note/decoration object-only identities incomplete. סיבת הכשל: בדיקת היחידה ציפתה ל-reason כללי, בעוד שהקוד דורש גם fragmentIndex ומחזיר footnote-fragment-without-stable-source-id-or-fragment-index. זו אי-התאמה בציפיית הבדיקה, לא כשל בעימוד.
+- תיקון הציפייה הועלה ב-commit 00eeb854; יש לוודא CI מלא ושאר ה-workflows על HEAD אחד.
+
+### 5. גבול המימוש הנוכחי
+קיים reducer טהור, קיים adapter למודל RED, וקיים מסלול runtime ממוקד לבדיקת גבולות סוגריים. עם זאת, אין עדיין producer כללי ששומר checkpoints בכל שלבי pipeline, אין operationId אחיד לכל שינויי ה-DP/retreat, ואין UI issue-centered. ה-adapter דורש caller שיספק evaluatedKinds מפורש לכול עמוד; בהיעדרו capture מסומן incomplete.
+
+### 6. שלב העבודה הבא
+1. להשלים CI אחרי תיקון ציפיית הבדיקה ולוודא שכל ארבעת ה-workflows עברו על HEAD אחד.
+2. לבנות pure checkpoint producer על fixtures מסוריאלזים של RED, עם Ledger ותוצאת predicate coverage מפורשים.
+3. לבדוק שה-snapshots זהים בין שתי ריצות וש-no-op capture משאיר layoutHash/bodyGeometryHash ללא שינוי.
+4. רק לאחר מכן לחבר checkpoints אופציונליים לנקודות pipeline/DP, ולתעד operation IDs.
+5. UI issue-centered יישאר מחוץ לשלב זה.
+
+P6/P7 אינם בשימוש כקריטריוני קבלה; לא שונו parser, KP/DP line-breaking, typography או page-balancing decisions. כל חומרי archive נשארו ללא שינוי.
+
+## Session 15a — הבהרת צורת ה-target של סוגריים ב-Ledger (12.11.2026)
+
+קריאה ישירה של protections-matrix.js ו-ledger.js הבהירה את ההבחנה: CHECKS.parenConsistency מחזיר violation.target=paren@p.id, אך ledger.create מקבל ושומר p.id בלבד. לכן issue.target ברשומת Ledger הוא pN@tN. ה-adapter, שמקבל רשומות Ledger, חייב להתאים ל-pN@tN; אין להחיל עליו את prefix paren@. תיקון זה הוחל בקוד ובבדיקות וה-E2E עודכן. אין שינוי ב-CHECKS או במבנה Ledger.
+
+
+## Session 16 — זהויות מקור לעיטורים ובדיקת שערים (12.11.2026)
+
+### 1. זהויות עיטורים
+- ornament-plan.js מצמיד tokenId לעיטורי H2/H3 ולמפרידי כותרות; heading-divider retains rollbackKey.
+- shaar-divider מקבל sourceKey ייחודי לפי page.type.
+- chapter-end ornament מקבל tokenId של השורה האחרונה או sourceKey page-scoped.
+- step-audit-model-adapter.js משתמש ב-rollbackKey/tokenId/sourceKey לפני object identity. אובייקט בלי מקור סמנטי נשאר incomplete.
+- נוסף unit test שמחליף אובייקטי decoration בין snapshots עם אותו מקור סמנטי, ומוודא אותו elementId יחד עם moved/resized ולא added/removed. הבדיקה מכסה גם tokenId וגם sourceKey.
+
+הנתונים הנוספים אינם משנים גאומטריה או פריסה: layoutHash ו-bodyGeometryHash אינם קוראים page.decorations או את שדות provenance החדשים.
+
+### 2. תוצאות אימות לפני בדיקת sourceKey המורחבת
+על HEAD 60675e60f4dddd49336b7c488e6601433121e189:
+- CI — success; שלושת shards עברו.
+- layout-invariants — success; layout-audit + very-long-corpus עברו.
+- rebuild-worker-bundles — success; Verify D-65 bundle determinism עבר.
+- full-math-audit — success; local audit על הקורפוס הגדול עבר; live סומן skipped.
+- יחידות StepAudit: reducer 13/13, adapter 20/20.
+- E2E pipeline: 16/16.
+ה-HEAD הקודם ecf7aaa7 כבר עבר את אותם ארבעת השערים לפני הרחבת זהויות העיטורים.
+
+### 3. בדיקת שערים נדרשת אחרי הרחבת sourceKey
+ה-commit הבא כולל בדיקת sourceKey מפורשת ותיעוד. יש לבדוק שוב את ארבעת ה-workflows על אותו HEAD חדש; אין להסתפק בתוצאות 60675e60 לבדיקת ה-unit החדשה.
+
+
+## Session 17 — אימות סופי של StepAudit/עיטורים (12.11.2026)
+
+### 1. זהויות מקור לעיטורים
+ה-commit d70964f87d204d9c2deff3c4fe60d0f78e4ff909 הוסיף tokenId לעיטורי H2/H3 ולמפרידי כותרות; heading-divider שומר rollbackKey; shaar-divider מקבל sourceKey לפי page.type; chapter-end מקבל tokenId של השורה האחרונה או sourceKey page-scoped.
+
+ה-commit 60675e60f4dddd49336b7c488e6601433121e189 הוסיף ל-adapter תמיכה ב-sourceKey ול-unit regression של object חדש עם אותו tokenId אך geometry שונה. ה-commit 0f261eabc468f7515c83e01d36f1462ae400ae20 הרחיב את אותה בדיקה גם ל-sourceKey של shaar-divider. הבדיקה מוודאת אותו elementId לאורך snapshots, moved/resized וללא added/removed.
+
+ה-provenance metadata אינו נכנס ל-layoutHash/bodyGeometryHash; לא חל שינוי בהחלטות DP, מדידה, balancing או renderer.
+
+### 2. תוצאות שערים סופיות
+כל השערים עברו על HEAD 0f261eabc468f7515c83e01d36f1462ae400ae20:
+- CI — success: test (18), test (20), test (22), layout-audit.
+- Layout invariants — success; very-long-corpus success.
+- Rebuild Worker bundles — success; D-65 Verify deterministic bundle hash success.
+- Full Math Audit — success; local job success על הקורפוס הגדול (291,719 words, כ-1,038 pages); live job skipped לפי תצורת workflow.
+- StepAudit reducer 13/13; StepAudit model adapter 21/21 בכל shards; typography 17/17; E2E pipeline 16/16; S8 decoration 48/48; S10 UI 44/44.
+- לא נותרו failed jobs ב-HEAD זה.
+
+### 3. מצב PR
+PR #6 נשאר open, merged=false, mergeable=true. תיאורו עודכן לתיאור אמיתי של היקף העבודה: StepAudit reducer, RED model adapter, מסלול סוגריים, זהויות עיטורים והפערים שנותרו. אין לבצע merge בשלב זה.
+
+### 4. פערים שנותרו
+1. generic checkpoint producer לכל שלבי pipeline ולא רק adapter שמוכן לקבל מודל.
+2. operationId/linkage אחיד סביב mutations ב-DP/retreat/repair.
+3. בניית issue windows על פני ריצה מלאה עם capture completeness.
+4. Testing Tab UI להצגת timeline ומצב כל האחים.
+5. Stress audit של StepAudit עצמו על הקורפוס הגדול, בנפרד מ-Full Math Audit של מנוע העימוד.
+
+השלב הבא המומלץ: pure checkpoint producer/contract עם snapshots plain-JSON ו-predicate coverage מפורש; לאחריו no-op capture proof והשוואת hashes, ורק לאחר מכן opt-in instrumentation. אין להתחיל UI לפני שה-capture וה-linkage מוכחים.

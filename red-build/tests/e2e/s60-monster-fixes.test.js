@@ -110,10 +110,27 @@ describe('S6.0 — הבדיקה המפלצתית: רגרסיות תיקוני ש
     assert(longRow.lines && longRow.lines.length >= 2, 'השורה נעטפה לריבוע (בעבר: שורה אחת של 1,524px מחוץ לעמוד): lines=' + (longRow.lines ? longRow.lines.length : 0));
   });
 
-  it('F6 — נוסחת מתיחת ה-TOC: naturalGap מנכה את גובה השורה האחרונה (הענף אינו מת עוד)', () => {
-    // בדיקת יחידה על הנוסחה: עמוד דליל (5 שורות בנפח של 40) — המתיחה ממלאת עד התחתית
-    const doc = 'כותרת 1 - חלק\n\n' + Array.from({ length: 3 }, (_, i) => 'כותרת 2 - פרק ' + i).join('\n\n') + '\n\nתוכן.';
-    const r = typeset(doc, legacySettings(), { noRecommendations: true });
+  it('F6 — נוסחת מתיחת ה-TOC: עמוד ביניים דליל נמתח עד לגובה האחרון', () => {
+    // H1 + יחידת H2 קטנה יוצרים עמוד ביניים דליל; יחידת H2 גדולה מכריחה
+    // עמוד נוסף. כל כותרת מקבלת טקסט גוף ממשי לפי D-100; מפרידי הפסקאות
+    // הם newline אמיתיים כדי שה-parser יזהה כל יחידה בנפרד.
+    const parts = [
+      'כותרת 1 - חלק',
+      'פסקת גוף הפותחת את החלק.',
+      'כותרת 2 - פרק קצר',
+      'פסקת גוף בפרק הקצר.',
+      'כותרת 3 - סעיף קצר ראשון',
+      'תוכן ממשי של הסעיף הראשון.',
+      'כותרת 3 - סעיף קצר שני',
+      'תוכן ממשי של הסעיף השני.',
+      'כותרת 2 - פרק ארוך',
+      'פסקת גוף הפותחת את הפרק הארוך.'
+    ];
+    for (let i = 0; i < 32; i++) {
+      parts.push('כותרת 3 - תת סעיף ארוך ' + i);
+      parts.push('פסקת גוף ממשית לתת סעיף ' + i + '.');
+    }
+    const r = typeset(parts.join('\n\n'), legacySettings(), { noRecommendations: true });
     let stretched = 0;
     for (const p of r.pages) {
       if (!p.toc || !p.toc.rows || p.toc.rows.length < 2) continue;
@@ -121,11 +138,10 @@ describe('S6.0 — הבדיקה המפלצתית: רגרסיות תיקוני ש
       const gaps = [];
       for (let i = 1; i < ys.length; i++) gaps.push(ys[i] - ys[i - 1]);
       const uniform = gaps.length && gaps.every(g => Math.abs(g - gaps[0]) < 1.5);
-      const spread = gaps.length && Math.max(...gaps) > 40; // ריווח מתיחה משמעותי
+      const spread = gaps.length && Math.max(...gaps) > 40;
       if (uniform && spread) stretched++;
     }
-    // עמוד TOC דליל אחד לפחות מתוח עם פס אחיד (בעבר: ערימה טבעית תמידית)
-    assert(stretched >= 0, 'הנוסחה רצה בלי קריסה (מתיחה=' + stretched + ')');
+    assert(stretched >= 1, 'לפחות עמוד TOC ביניים דליל אחד נמתח בריווח אחיד; התקבלו ' + stretched);
   });
 
   it('F10/F12/F16 — חשבונאות: [ לא-סגור, קידומת סימן ב-h2, ושער-אחורי כבוי — בלי דגלי אובדן שקריים', () => {
@@ -209,18 +225,21 @@ describe('S6.0 — רגרסיות ייצוא/PDF (תצוגה=ייצוא)', () =>
 
 describe('S6.0 — רגרסיות נתיב DP', () => {
 
-  it('R3-C1 — flush זנב: מסמך המסתיים בכותרת חוצה-טורים (H3) אינו מאבד אותה', () => {
+  it('R3-C1 — flush זנב: הכותרת החוצה-טורית האחרונה ופסקת הגוף שאחריה נשמרות', () => {
     const doc = Array.from({ length: 24 }, (_, i) => 'שורת גוף מספר ' + i + ' עם עוד כמה מילים למילוי טורים בעמוד.').join(' ')
-      + '\n\nכותרת 3 - כותרת חוצה טורים בסוף המסמך';
+      + '\n\nכותרת 3 - כותרת חוצה טורים בסוף המסמך'
+      + '\n\nפסקת גוף ממשית אחרי כותרת H3 החוצה-טורים, המשלימה את מקטע התוכן.';
     const settings = getDefaultSettings();
     settings['heading-3-mode'] = 'full-width';
     const r = typeset(doc, settings, { noRecommendations: true });
+    assert(r.contentPreserved === true, 'המסמך התקין נשמר במלואו');
     const texts = [];
     for (const p of r.pages) {
       for (const ln of (p.spanning && p.spanning.lines) || []) texts.push(ln.words ? ln.words.map(w => w.t || w).join(' ') : '');
       for (const c of p.columns || []) for (const ln of c) texts.push(ln.words ? ln.words.map(w => w.t || w).join(' ') : '');
     }
-    assert(texts.some(t => String(t).includes('חוצה טורים בסוף')), 'כותרת הזנב החוצה-טורית קיימת בפלט (בעבר נגנזה בשקט)');
+    assert(texts.some(t => String(t).includes('חוצה טורים בסוף')), 'כותרת H3 האחרונה קיימת בפלט');
+    assert(texts.some(t => String(t).includes('המשלימה את מקטע התוכן')), 'פסקת הגוף שאחרי H3 קיימת בפלט');
   });
 
   it('R4-C1 — line-height מהמודל לכל שורת DP: renderLine קובע גובה גם בלי AQ', () => {

@@ -40,7 +40,7 @@ function serializeTypesetResult(result) {
     settings: result.settings,
     pages: result.pages,                 // עצמים פשוטים (columns/lines/template) — ניתנים להעברה
     report,                              // findings + counts + retreat (plain)
-    trace: result.events.toTraceV2(),    // events: [{seq,stage,label,pageIndex,ts,payload}]
+    trace: result.events.toTraceV2(),    // capture: recording/verbosity/completeness; events: [{seq,stage,label,pageIndex,ts,payload}]
     ledger: result.ledger.toSchemaV2(),  // issues: [...] (lifecycle מלא)
     ledgerSummary: result.ledger.summary(),
     toc: result.toc,

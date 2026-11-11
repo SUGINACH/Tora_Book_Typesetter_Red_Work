@@ -239,6 +239,45 @@ function createImudLibrary(engine) {
    * מיוחד; ההבדלים חייבים לשרוד את הייבוא (בדיקה מחייבת ב-setting-sets.test.js). */
   const SETTING_SETS = ['תלמוד', 'פרשנות', 'קונטרס'];
 
+  // Presets שמקורם בערכות נפרדות של IMUD נשארים מבודדים מה-setting_sets הרגיל.
+  // אין auto-load ואין שינוי של default_settings.json הכללי.
+  const SETTING_PRESETS = [
+    {
+      id: 'makom-bina-v20.5',
+      label: 'מקום בינה v20.5',
+      source: 'IMUD_TORANI',
+      version: '20.5',
+      sets: [
+        { id: 'default', label: 'ברירות מחדל מלאות' },
+        { id: 'תלמוד', label: 'תלמוד' },
+        { id: 'פרשנות', label: 'פרשנות' },
+        { id: 'קונטרס', label: 'קונטרס' }
+      ]
+    }
+  ];
+
+  /** רשימת קבוצות preset נוספות; מטא-נתונים בלבד, ללא טעינת קבצים. */
+  function listSettingPresets() {
+    return SETTING_PRESETS.map(p => ({ ...p, sets: p.sets.map(s => ({ ...s })) }));
+  }
+
+  /** טעינת ערכה מתוך preset מבודד. כל קובץ עובר אותה טבלת disposition של IMUD. */
+  async function loadSettingPreset(presetId, setId) {
+    const preset = SETTING_PRESETS.find(p => p.id === presetId);
+    if (!preset) throw new Error(`preset לא מוכר: ${presetId}`);
+    const set = preset.sets.find(s => s.id === setId);
+    if (!set) throw new Error(`ערכה לא מוכרת ב-${preset.label}: ${setId}`);
+    if (!fontCatalog.loaded) await loadFontCatalog().catch(() => {});
+    const file = set.id === 'default' ? 'default_settings.json' : `setting_sets/${encodeURIComponent(set.id)}.json`;
+    const legacy = await fetchJson(`${BASE}/presets/${encodeURIComponent(preset.id)}/${file}`);
+    const { settings, unmapped, report } = importImudSettings(
+      legacy,
+      new Set(getSettingDefs().map(r => r.id)),
+      { availableFonts: fontCatalog.byFamily ? new Set(fontCatalog.byFamily.keys()) : undefined }
+    );
+    return { presetId: preset.id, presetLabel: preset.label, source: preset.source, version: preset.version, setId: set.id, setLabel: set.label, settings, unmapped, report };
+  }
+
   /** רשימת הערכות המוטמעות (שמות קבצים בלבד — לא נטענות עד בחירה). */
   function listSettingSets() { return SETTING_SETS.slice(); }
 
@@ -397,7 +436,7 @@ function createImudLibrary(engine) {
     return fontCatalog.loaded ? new Set(fontCatalog.byFamily.keys()) : null;
   }
 
-  return { loadFontCatalog, loadFont, loadDefaultExportFont, listDesigns, ensureDesign, ensureThemeSet, loadLegacyDefaults, loadHeadingFont, exportFontCss, resolveFamily, loadFontStack, catalogFamilies, listSettingSets, loadSettingSet, fontStatus, catalogEntries };
+  return { loadFontCatalog, loadFont, loadDefaultExportFont, listDesigns, ensureDesign, ensureThemeSet, loadLegacyDefaults, loadHeadingFont, exportFontCss, resolveFamily, loadFontStack, catalogFamilies, listSettingSets, loadSettingSet, listSettingPresets, loadSettingPreset, fontStatus, catalogEntries };
 }
 
 module.exports = { createImudLibrary, DESIGN_FILES };

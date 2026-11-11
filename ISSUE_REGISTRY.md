@@ -1,4 +1,7 @@
 # ISSUE_REGISTRY.md — רישום בעיות · Tora Book Typesetter Red
+
+> **הוראת משתמש D-101 — 10.11.2026:** כל אזכור של מדדים/השוואה היסטורית בהמשך הרישום הוא תיעוד היסטורי בלבד. אין להריץ, לחשב, להציג, לנתח או להשתמש בהם; אין התאמת פסקאות, מילים או שורות, ואין משימות פעילות הנגזרות מהם. בדיקות RED העצמאיות בלבד ממשיכות לפי חוזיהן.
+
 > **פורמט חובה (תכנית עבודה 0.1.2):** מזהה | חומרה | מצב | ראיות | קומיט תיקון | בדיקת רגרסיה.
 > מקור הממצאים: דוח הביקורת העצמאי `audits/01_PROGRESS_AUDIT.md` (6 ממצאי P0 + 8 ממצאי P1).
 
@@ -180,7 +183,7 @@ C10 — הבודק השווה קטעי הערות המפוצלות (S4.24 שור
 | P-7 | ~~פטור window-wrap רחב ב-audit-in-page~~ **נסגר (S5.2)** | audit-in-page.js | — | הושווה ל-full-math: ‏INK_OUTSIDE/LINE_ABOVE על כל שורה; הפטור נשאר ליישור בלבד |
 | P-8 | פיץ'/יישור/פוליו/סמנים/TOC — **רוב נסגר (S5.2)**: ‏PITCH_UNIFORMITY, ‏BODY_FONT_UNIFORMITY, ‏FOLIO_SEQUENCE, ‏MARKER_NOTE_MATCH, ‏TOC_ROWS, ‏LINE_ABOVE_COLUMN, ‏COLUMN_TOPS_ALIGN, ‏FN_RULE_PRESENT, ‏TYPE_UNKNOWN — נאכפים כעת בשני האודיטים + 23 בקרות רגישות (audit-sensitivity); נותרו: ‏A4 קשיח בכמה בודקים, ‏EMPTY_PAGE רק regular | full-math-audit.js | נמוך | אכיפה מוכחת |
 | P-9 | hdr-r/c/l-type מתים במורשת (5/8 מקורות בקונפיגורציה אחרת) + verso + fn-columns + aq-* + תוכן שערים מהמטא בלבד | legacy-imud-flow.js:208-210,814-871; readConfig | בינוני (הגדרות) | עדכון הגדרה בודדת לא זורם לחי — רשימת חריגים מדויקת בסקירת 1-E; נתיב המורשת מוקשה מכויל-ייחוס |
-| P-10 | ~~parity לא חוסם; אין workflow על gh-pages~~ **נסגר (S5.2)** | layout-parity.yml | — | ‏ratchet לציון (בסיס 0.85) + **gh-pages-audit.yml**: כל דחיפה ל-gh-pages ממתינה לבניית Pages ומריצה אודיט חי עם אימות sha256 של הבאנדלים הפרוסים מול main |
+| P-10 | ~~אין workflow על gh-pages~~ **נסגר (S5.2)**; **ratchet לציון parity היסטורי הוסר (S6.5)** | layout-parity.yml | — | **gh-pages-audit.yml** נשאר מאמת sha256 של הבאנדלים הפרוסים מול main. ציון P1–P9 הוא מרחק מדוגמת PDF היסטורית ואינו רצפת קבלה. H4/C4–C8 אינם שערי נכונות ללא חוזה מאושר; C5–C8 ממתינים לבדיקות settings-aware. הדוח נשמר לאבחון בלבד (D-98/D-99). |
 | P-11 | מינורי — **רוב נסגר (S5.2)**: ‏fit-matrix נתיב, ‏convert_imud_fonts יציאה, לולאת הקישורים המתה הוסרה, ‏s14 מיקוב מדויק, ‏MediaBox/BleedBox חוקיים + סימני חיתוך בדימות; ‏columnDividerGeometry נותר (בשימוש ב-s8); ‏Number(null) נותר | — | נמוך | ניקוי |
 
 

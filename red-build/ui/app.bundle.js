@@ -1,6 +1,6 @@
 // ui/app.bundle.js — **נוצר אוטומטית** ע"י tools/build-worker-bundle.js (אין לערוך ידנית)
 // חבילת מעטפת ה־UI (המנוע רץ ב־Worker הנפרד)
-// מודולים: 60 · בלי חותמות זמן (דטרמיניזם)
+// מודולים: 63 · בלי חותמות זמן (דטרמיניזם)
 'use strict';
 
 var __crypto = (function () {
@@ -320,6 +320,12 @@ var __paths = {
   "src/ui/app-shell.js|../engine/core/legacy-settings-map": "src/engine/core/legacy-settings-map.js",
   "src/ui/app-shell.js|../engine/layout/page-templates": "src/engine/layout/page-templates.js",
   "src/engine/output/project-io.js|../core/settings-registry": "src/engine/core/settings-registry.js",
+  "src/ui/test-doc-generator.js|../engine/parser/dfa-lexer": "src/engine/parser/dfa-lexer.js",
+  "src/ui/test-doc-generator.js|../engine/parser/block-tokenizer": "src/engine/parser/block-tokenizer.js",
+  "src/ui/test-doc-generator.js|../engine/parser/document-structure": "src/engine/parser/document-structure.js",
+  "src/engine/parser/block-tokenizer.js|./dfa-lexer": "src/engine/parser/dfa-lexer.js",
+  "src/engine/parser/block-tokenizer.js|./bracket-scanner": "src/engine/parser/bracket-scanner.js",
+  "src/engine/parser/document-structure.js|./bracket-scanner": "src/engine/parser/bracket-scanner.js",
   "src/ui/editor-tab.js|../engine/decoration/folio": "src/engine/decoration/folio.js",
   "src/ui/settings-panel.js|./bindings.generated": "src/ui/bindings.generated.js",
   "src/ui/extensions-panel.js|../engine/extensions/extensions-io": "src/engine/extensions/extensions-io.js",
@@ -1879,6 +1885,10 @@ function mulberry32(seed) {
 /** הזרע הקבוע של מצב "קבוע" — אף פעם לא משתנה (נעילת הדטרמיניזם בין גרסאות פריסה). */
 const FIXED_SEED = 0x54F2A17;
 
+const { lexDocument } = require('../engine/parser/dfa-lexer');
+const { tokenize } = require('../engine/parser/block-tokenizer');
+const { assertHeadingStructure } = require('../engine/parser/document-structure');
+
 /** מאגרי מילים — עברית אמיתית באורכים מגוונים (2–11 תווים) לריאליזם טיפוגרפי. */
 const WORDS = [
   'תורה', 'הלכה', 'סוגיה', 'שיעור', 'דין', 'טעם', 'פשט', 'דרש', 'רמז', 'סוד',
@@ -2013,6 +2023,34 @@ function chapterTitle(rng, idx) {
  * בלוק כותרת-משנה (ציר 3) — טקסט כותרת מגוון.
  * @param {number} level 3..7
  */
+/** Ensure synthetic heading-only runs are completed before a same/shallower heading or chapter end. */
+function ensureGeneratedHeadingRunsHaveBody(lines, rng) {
+  const tokens = tokenize(lines);
+  const out = [];
+  let pendingLevel = null;
+
+  for (const token of tokens) {
+    if (token.type === 'heading') {
+      if (pendingLevel != null && Number(token.level) <= pendingLevel) {
+        out.push(paragraphText(rng, randInt(rng, 5, 9)) + '.');
+        pendingLevel = null;
+      }
+      out.push(token.raw || ('כותרת ' + token.level + ' - ' + token.text));
+      pendingLevel = Number(token.level);
+      continue;
+    }
+
+    out.push(token.raw || token.text || '');
+    if (token.type === 'paragraph' && Array.isArray(token.parts) &&
+        token.parts.some(part => part.kind === 'text' && /[\\p{L}\\p{N}]/u.test(part.value))) {
+      pendingLevel = null;
+    }
+  }
+
+  if (pendingLevel != null) out.push(paragraphText(rng, randInt(rng, 5, 9)) + '.');
+  return out;
+}
+
 function subHeadingText(rng, level) {
   const h3 = ['כללים והגדרות', 'מחלוקת הראשונים', 'שיטת הרמב"ם', 'דעת השולחן ערוך', 'ביאור הסוגיה', 'השלכות מעשיות'];
   const h456 = ['טעם הדין', 'גדרי הדין', 'מקור הדין', 'חילוקי דינים', 'דין נוסף', 'לשון הפוסקים', 'שאלה נפרדת', 'ראיה מהגמרא'];
@@ -2072,7 +2110,7 @@ function chapterLines(rng, opts, chapterIdx) {
     if (i === guaranteedAt) {
       lines.push(`כותרת ${guaranteedLvl} - ${subHeadingText(rng, guaranteedLvl)}`);
       if (chance(rng, 0.25)) { // רצף כותרות — עקת escort
-        lines.push(`כותרת ${Math.min(6, guaranteedLvl + 1)} - ${subHeadingText(rng, Math.min(6, guaranteedLvl + 1))}`);
+        lines.push(`כותרת ${Math.min(7, guaranteedLvl + 1)} - ${subHeadingText(rng, Math.min(7, guaranteedLvl + 1))}`);
       }
       blocksSinceHeading = 0;
       continue;
@@ -2083,7 +2121,7 @@ function chapterLines(rng, opts, chapterIdx) {
       const lvl = isTop ? randInt(rng, 4, 5) : isBottom ? randInt(rng, 5, 6) : randInt(rng, 4, 6);
       lines.push(`כותרת ${lvl} - ${subHeadingText(rng, lvl)}`);
       if (chance(rng, 0.25)) { // רצף כותרות — עקת escort
-        lines.push(`כותרת ${Math.min(6, lvl + 1)} - ${subHeadingText(rng, lvl + 1)}`);
+        lines.push(`כותרת ${Math.min(7, lvl + 1)} - ${subHeadingText(rng, lvl + 1)}`);
       }
       blocksSinceHeading = 0;
       continue;
@@ -2102,6 +2140,11 @@ function chapterLines(rng, opts, chapterIdx) {
     lines.push(bodyParagraph(rng, kind));
     blocksSinceHeading++;
   }
+
+  // Complete any trailing/invalid heading-only run with genuine generated prose.
+  const validLines = ensureGeneratedHeadingRunsHaveBody(lines, rng);
+  lines.length = 0;
+  lines.push(...validLines);
 
   // הערות סיום בחלק מהפרקים
   if (chance(rng, opts.compact ? 0.5 : 0.33)) {
@@ -2155,10 +2198,558 @@ function generateTestDocument(opts = {}) {
   out.push('הערות סיום - הערות המחבר');
   out.push(paragraphText(rng, randInt(rng, 10, 20)));
 
-  return out.join('\n');
+  const document = out.join('\n');
+  const parsed = lexDocument(document);
+  assertHeadingStructure(tokenize(parsed.bodyLines));
+  return document;
 }
 
 module.exports = { generateTestDocument, FIXED_SEED, mulberry32 };
+
+};
+__modules["src/engine/parser/dfa-lexer.js"] = function (require, module, exports) {
+// src/engine/parser/dfa-lexer.js — Layer 1: metadata recognition ONLY in preamble (REQ-PAR-01, S4.5)
+'use strict';
+
+/**
+ * **S4.5 (ביקורת 03.11, סקירה 2):** מזהי הטקסט של הפרויקט המקורי — רשימה מלאה.
+ * המקור: default_settings.json + טקסט ברירת המחדל של IMUD_TORANI (app.js):
+ *   שם הספר - … / נושא - … / נושא מפורט - … / פרטי מהדורא - … / שם המחבר - … /
+ *   מקום ושנת הוצאה - … / שמירת זכויות - … / פרטי הוצאה לאור - … /
+ *   פרטי קשר - … / פרטים נוספים - …
+ * ולצדם המפתחות הקצרים שנתמכו תמיד (ספר, מחבר, מהדורא, מקום, שנה, מהדורה,
+ * editors, title). הפתיח נסגר רק בשורה ריקה/כותרת/הערת סיום — לא בשורת מטא־נתון.
+ */
+const METADATA_KEYS = [
+  // ארוכים (טקסט ברירת המחדל המקורי)
+  'שם הספר', 'נושא', 'נושא מפורט', 'פרטי מהדורא', 'שם המחבר', 'מקום ושנת הוצאה',
+  'שמירת זכויות', 'פרטי הוצאה לאור', 'פרטי קשר', 'פרטים נוספים',
+  // קצרים (תמיכה היסטורית)
+  'ספר', 'מחבר', 'מהדורא', 'מקום', 'שנה', 'מהדורה', 'editors', 'title'
+];
+
+const HEADING_RE = /^(כותרת\s*([0-7])|חלק\s+([א-ת]+)|הקדמה)\s*[-–—]\s*(.+)$/;
+
+/** ברירת המחדל ההיסטורית של קידומת הערת הסיום (en-line-prefix, default_settings.json). */
+const DEFAULT_ENDNOTE_PREFIX = 'הערת סיום -';
+
+/**
+ * **S4.5 (תיקון סיווג):** בניית ביטוי קידומת הערת סיום מהגדרת המשתמש.
+ * קלט ריק/רווחים ⇒ null (זיהוי מבוטל — שורות נשארות פסקאות; החלטה מפורשת
+ * של המשתמש, לא כשל שקט). הקידומת חייבת להסתיים במקף/מקף-ארוך/קו — אחרת
+ * מוסיפים את המקף בעצמנו (ערך ההגדרה "הערת סיום" שקול ל-"הערת סיום -").
+ */
+function compileEndnotePrefix(prefix) {
+  const p = String(prefix == null ? DEFAULT_ENDNOTE_PREFIX : prefix).trim();
+  if (!p) return null;
+  const withDash = /[-–—]$/.test(p) ? p : p + ' -';
+  const esc = withDash.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*').replace(/[-–—]/g, '[-–—]');
+  return new RegExp('^' + esc + '\\s*(.*)$');
+}
+
+/** **S4.5:** הוראת כותרת עמודי ההערות — צורת רבים בלבד («הערות סיום - כותרת»).
+ * הצורה הבסיסית של D-40 (/^הערת\s*סיום…/) התנגשה עם מזהה התוכן ההיסטורי
+ * («הערת סיום - טקסט» = הערה) וגרמה להיעלמות תוכן. רבים (העערות/הערות) = מקטע;
+ * יחיד (הערת) = תמיד תוכן. */
+const ENDNOTE_CLASS_RE = /^הערות\s*סיום\s*[-–—]\s*(.+)$/;
+
+/** ביטויי ברירת המחדל (תאימות לאחור לייבוא ישיר; tokenize מקבל opts ומזהה משם). */
+const ENDNOTE_PREFIX = compileEndnotePrefix(DEFAULT_ENDNOTE_PREFIX);
+const ENDNOTE_NUMBERED = /^הערת\s*סיום\s*[-–—]?\s*([0-9]{1,4})\s*[-–—]\s*(.+)$/;
+const ENDNOTE_CLASS = ENDNOTE_CLASS_RE;
+
+/**
+ * DFA states: PREAMBLE -> BODY. יציאה מ‑PREAMBLE: שורה ריקה או כותרת ראשונה.
+ * שורה כמו `נושא - דין סוכה ישנה` באמצע המסמך נשארת פסקה (REQ-PAR-01 / לקח Z.ai).
+ * @param {string} rawText
+ * @param {object} [opts] — { endnotePrefix: string } (S4.5: מזהה מוגדר; '' = מבוטל)
+ */
+function lexDocument(rawText, opts = {}) {
+  const endnoteRe = opts.endnotePrefixRe instanceof RegExp
+    ? opts.endnotePrefixRe
+    : compileEndnotePrefix(opts.endnotePrefix != null ? opts.endnotePrefix : DEFAULT_ENDNOTE_PREFIX);
+  const lines = String(rawText).replace(/\r\n?/g, '\n').split('\n');
+  const state = { phase: 'PREAMBLE' };
+  const metadata = {};
+  const body = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (state.phase === 'PREAMBLE') {
+      if (trimmed === '') { state.phase = 'BODY'; continue; }
+      if (HEADING_RE.test(trimmed) || (endnoteRe && endnoteRe.test(trimmed)) || ENDNOTE_CLASS_RE.test(trimmed)) {
+        state.phase = 'BODY'; body.push(line); continue;
+      }
+      const m = trimmed.split(/\s+[-–—]\s+/);
+      if (m.length >= 2 && METADATA_KEYS.includes(m[0].toLowerCase())) {
+        metadata[m[0]] = m.slice(1).join(' - ');
+        continue;
+      }
+      // שורה שאינה metadata → גם היא סוגרת את הפתיח
+      state.phase = 'BODY';
+      body.push(line);
+      continue;
+    }
+    body.push(line);
+  }
+  return { metadata, bodyLines: body };
+}
+
+module.exports = {
+  lexDocument, HEADING_RE, ENDNOTE_PREFIX, ENDNOTE_NUMBERED, ENDNOTE_CLASS,
+  ENDNOTE_CLASS_RE, METADATA_KEYS, DEFAULT_ENDNOTE_PREFIX, compileEndnotePrefix
+};
+
+};
+__modules["src/engine/parser/block-tokenizer.js"] = function (require, module, exports) {
+// src/engine/parser/block-tokenizer.js — H0–H7 / P / endnote / editorial tokens (REQ-PAR-03/04, CP1)
+'use strict';
+
+const crypto = require('crypto');
+const { HEADING_RE, ENDNOTE_CLASS_RE, DEFAULT_ENDNOTE_PREFIX, compileEndnotePrefix } = require('./dfa-lexer');
+const { scanBrackets } = require('./bracket-scanner');
+
+const ATOMIC_SPACE = '\uE000'; // V3/V4 breakthrough: רווח אטומי בתוך הערה — למדידה בלבד
+
+// **S5.2 (תיקון 12 — תיעוד, ללא שינוי התנהגות):** הנרמול שלהלן (״→׳ ו-‘ ’→") הוא
+// **מכוון** — כלל one-way לפי Z.ai fix (ראה protectors.glueNoteMarkers) — אין לשנותו.
+/** נרמול גרשים/מרכאות + ניקוי PUA פנימי (REQ-PAR-05; Z.ai fixes). */
+function normalizeText(s) {
+  return s
+    .replace(/[\u2018\u2019]/g, '"')            // חילוף מרכאות לועזיות
+    .replace(/\u05F4/g, '\u05F3')               // גרשיים → גרש (כלל one-way לפי Z.ai fix)
+    .replace(/[\uE000-\uF8FF]/g, (ch) => ch);   // PUA נשמר לבדיקה per-char; U+E000 מוסר לפני render בשלב output
+}
+
+let tokenSeq = 0;
+function mkToken(type, payload) {
+  return { id: `t${++tokenSeq}`, type, ...payload };
+}
+
+/**
+ * Tokenizer: שורות → טוקנים.
+ * - כותרת N - … (N∈0..7) → heading (מקף חובה; בלי מקף = פסקה בשקט)
+ * - `##…##` → editorial — מוסר לחלוטין מהפלט אך נרשם ל‑audit
+ * - `הערת סיום - …` → **endnote (תוכן!)** — הסמנטיקה המקורית (S4.5, תיקון D-40):
+ *   הקידומת מגדירה את הטקסט שאחריה כהערת סיום. במסמך המודפס הקידומת עצמה
+ *   אינה מופיעה (כלל פענוח, לא עיטור — מסמך chat-v20.3 ההיסטורי).
+ * - `הערת סיום-1 - טקסט` → endnote ממוספרת (D-40; עוגן סמן).
+ * - `הערות סיום - כותרת` (רבים!) → הוראת כותרת עמודי ההערות — הצורה היחידה
+ *   שאינה מתנגשת עם מזהה התוכן (ביקורת 03.11: הצורה הקודמת בלעה הערות אמיתיות).
+ * - תוחמי הערות השוליים מוגדרים: opts.fnOpen/fnClose (ברירת מחדל [ ]).
+ * - `[a][b]` רצופים → הערות נפרדות (REQ-PAR-04)
+ * - בתוך `[...]`: רווחים → \uE000 (אטומי, REQ-LB-04)
+ * @param {string[]} bodyLines
+ * @param {object} [opts] — { endnotePrefix, endnotePrefixRe, fnOpen, fnClose } (S4.5)
+ */
+function tokenize(bodyLines, opts = {}) {
+  tokenSeq = 0;
+  // מזהה הערת הסיום: ביטוי מוכן (מה-lexer) או בנוי מהקידומת; '' ⇒ מבוטל
+  const endnoteRe = opts.endnotePrefixRe instanceof RegExp
+    ? opts.endnotePrefixRe
+    : compileEndnotePrefix(opts.endnotePrefix != null ? opts.endnotePrefix : DEFAULT_ENDNOTE_PREFIX);
+  const endnoteNumRe = (() => {
+    // ממוספרת: `הערת סיום-1 - טקסט` — נבנית מאותה קידומת (ללא המקף האחרון) + מספר + מקף
+    const p = String(opts.endnotePrefix != null ? opts.endnotePrefix : DEFAULT_ENDNOTE_PREFIX).trim() || DEFAULT_ENDNOTE_PREFIX;
+    const base = p.replace(/[-–—]\s*$/, '').trim();
+    if (!base) return null;
+    const esc = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*');
+    return new RegExp('^' + esc + '\\s*[-–—]?\\s*([0-9]{1,4})\\s*[-–—]\\s*(.+)$');
+  })();
+  const fnOpen = opts.fnOpen != null ? String(opts.fnOpen) : '[';
+  const fnClose = opts.fnClose != null ? String(opts.fnClose) : ']';
+  // S4.5: תוחם ריק/רווחים ⇒ הזיהוי מבוטל — scanBrackets מקבל את הערך הגולמי
+  // (לא fallback ל-[) כדי שביטול מפורש לא ייהפך בטעות לזיהוי ברירת מחדל.
+  const fnEnabled = fnOpen.trim().length > 0 && fnClose.trim().length > 0;
+  const tokens = [];
+  for (const raw of bodyLines) {
+    let line = normalizeText(raw.trim()); // editable: editorial ##…## מוסר מהשורה (Spec §7)
+    if (!line) continue;
+
+    let m = line.match(HEADING_RE);
+    if (m) {
+      const level = m[2] !== undefined ? Number(m[2]) : (m[1] === 'הקדמה' ? 0 : 1);
+      tokens.push(mkToken('heading', { level, text: m[4] || m[0], raw: line }));
+      continue;
+    }
+    // **S4.5 (תיקון D-40 — ביקורת 03.11):** סדר הבדיקות שהוחזר לסמנטיקה המקורית:
+    // 1) ממוספרת (עוגן) 2) תוכן (כל שורה המתחילה בקידומת = הערה!) 3) הוראת
+    // כותרת — רק בצורת הרבים «הערות סיום - …» שאינה יכולה להתנגש עם הקידומת.
+    if (endnoteNumRe) {
+      const mNum = line.match(endnoteNumRe);
+      if (mNum) {
+        tokens.push(mkToken('endnote', { num: Number(mNum[1]), text: mNum[2].trim(), raw: line }));
+        continue;
+      }
+    }
+    if (endnoteRe) {
+      const mEnd = line.match(endnoteRe);
+      if (mEnd && mEnd[1] && mEnd[1].trim()) {
+        tokens.push(mkToken('endnote', { text: mEnd[1].trim(), raw: line }));
+        continue;
+      }
+    }
+    const mCls = line.match(ENDNOTE_CLASS_RE);
+    if (mCls) {
+      tokens.push(mkToken('endnote-class', { title: mCls[1].trim(), raw: line }));
+      continue;
+    }
+    // editorial ##…## — הסרה מלאה (נרשם; לעולם לא נגלה בפלט — Spec §7)
+    const editorial = line.match(/##(.+?)##/g);
+    if (editorial) {
+      for (const e of editorial) tokens.push(mkToken('editorial', { text: e.slice(2, -2), removed: true }));
+      line = line.replace(/##.+?##/g, ' ').replace(/\s+/g, ' ').trim();
+      if (!line) continue;
+    }
+
+    // חילוץ הערות [..] עם מחסנית; זוגות רצופים → הערות נפרדות; תוחמים מוגדרים (S4.5)
+    const segs = scanBrackets([{ text: line, paraIndex: tokens.length }], { open: fnOpen, close: fnClose });
+    let cursor = 0;
+    const parts = [];
+    const notes = [];
+    // בנייה לפי pairs משמאל לימין (outermost first)
+    const outer = segs.pairs.filter(p => p.depth === 1).sort((a, b) => a.open - b.open); // חיצוניים בלבד (depth 1)
+    const openCh = fnEnabled ? fnOpen : '[';
+    const closeCh = fnEnabled ? fnClose : ']';
+    for (const p of outer) {
+      const before = line.slice(cursor, p.open).trim();
+      if (before) parts.push({ kind: 'text', value: before });
+      // **S4.6 (ביקורת 3):** חיתוך לפי תחילת הסוגר + אורכו בפועל (closeStart/closeLen
+      // מהסורק) — נכון גם לתוחמים מרובי-תווים (']]'/END) ולצורה העברית ]ם. בעבר
+      // נוסף אורך התוחם המוגדר למיקום התו האחרון — קיצוץ/דילוג תווים בתוחם ארוך.
+      const cs = p.closeStart != null ? p.closeStart : p.close;
+      const cl = p.closeLen != null ? p.closeLen : closeCh.length;
+      const noteText = line.slice(p.open + openCh.length, cs).trim().replace(/ +/g, ATOMIC_SPACE);
+      notes.push(noteText);
+      parts.push({ kind: 'note-ref', noteIndex: notes.length - 1 });
+      cursor = cs + cl;
+    }
+    const tail = line.slice(cursor).trim();
+    if (tail) parts.push({ kind: 'text', value: tail });
+
+    tokens.push(mkToken('paragraph', { parts, notes, unmatchedClosers: segs.unmatchedClosers, raw: line }));
+  }
+  return tokens;
+}
+
+/** CP1: hash של מולטיסט הטוקנים — עקרון שימור תוכן (BRZ-15).
+ * **S4.5 (ביקורת 03.11):** כותרת הוראת ההערות (endnote-class) נכנסת לחשיבון —
+ * היא טקסט שמופיע בפלט (כותרת עמודי ההערות); השמטתה איפשרה בעבר לתוכן
+ * שסווג בטעות כהוראה להיעלם בלי שה-hash יתריע. */
+function contentHash(tokens) {
+  const stable = JSON.stringify(tokens.flatMap(t => {
+    if (t.type === 'paragraph') return [['P', ...t.parts.map(p => p.kind === 'text' ? p.value : `⟦${t.notes[p.noteIndex]}⟧`), String(t.notes.length)]];
+    if (t.type === 'heading') return [['H', String(t.level), t.text]];
+    if (t.type === 'endnote') return [['EN', String(t.num || ''), t.text]];
+    if (t.type === 'endnote-class') return [['ENH', t.title]]; // directive — כותרתו תוכן מוצג (S4.5)
+    return [];
+  }));
+  return crypto.createHash('sha256').update(stable, 'utf8').digest('hex');
+}
+
+module.exports = { tokenize, contentHash, normalizeText, ATOMIC_SPACE };
+
+};
+__modules["src/engine/parser/bracket-scanner.js"] = function (require, module, exports) {
+// src/engine/parser/bracket-scanner.js — Balanced stack scanner for [...] footnotes (REQ-PAR-02, REQ-PAR-ST-01)
+'use strict';
+
+/**
+ * Close form registry: every accepted closing spelling of a footnote bracket.
+ * Keyed by the FIRST character of the closer; `len` = characters consumed in the source text.
+ *   ']'      → plain ASCII closer                     (len 1)
+ *   ']' + U+05DD → Hebrew-style "‏]ם" closer          (len 2)
+ * Openers are always '['. Matching is done against this table so future
+ * historical variants (e.g. gershayim-closers) can be added without touching the loop.
+ */
+const CLOSER_FORMS = [
+  { first: ']', len: 1, name: 'ascii' },
+  { first: ']', len: 2, next: '\u05DD', name: 'hebrew-mem-sofit' },
+];
+
+/**
+ * Return the closer form matching at text[i], or null.
+ * Deterministic longest-match: we scan the whole registry, keep every form
+ * whose characters actually match at position i, and return the one consuming
+ * the most characters. Registry order can never change the outcome.
+ */
+function matchCloser(text, i) {
+  let best = null;
+  for (const f of CLOSER_FORMS) {
+    if (text[i] !== f.first) continue;
+    // Verify all trailing characters declared by the form (if any).
+    let ok = true;
+    if (f.next !== undefined) {
+      const lastIdx = i + f.len - 1;
+      ok = lastIdx < text.length && text[lastIdx] === f.next;
+    }
+    if (ok && (!best || f.len > best.len)) best = f;
+  }
+  return best;
+}
+
+/**
+ * Stack scanner: detects `[...]` pairs including nesting, ranges spanning
+ * paragraphs/columns/pages, and depth at every position. Unmatched closers and
+ * openers are REPORTED, never auto-fixed (source-fidelity doctrine).
+ *
+ * **S4.5 (03.11):** התוחמים מוגדרים — opts { open, close } (ברירת מחדל [ ]).
+ * הצורה העברית "]ם" נבדקת רק בתוחם ברירת המחדל; תוחם מותאם מותאם בדיוק
+ * (מחרוזת, בדרך כלל תו בודד). תוחם ריק ⇒ הזיהוי מבוטל (פסקאות טהורות).
+ *
+ * @param {Array<{text:string, paraIndex:number}>} segments - text runs tagged with paragraph index
+ * @param {object} [opts] — { open: string, close: string }
+ * @returns {{pairs:Array, unmatchedClosers:Array, unmatchedOpeners:Array, depthAt:(pos)=>number, scopeMap:Object}}
+ */
+function scanBrackets(segments, opts = {}) {
+  const openTok = String(opts.open != null ? opts.open : '[').trim();
+  const closeTok = String(opts.close != null ? opts.close : ']').trim();
+  const useDefault = openTok === '[' && closeTok === ']';
+  const enabled = openTok.length > 0 && closeTok.length > 0;
+  /** תואם פותח במיקום i (מחרוזת מלאה). */
+  const matchOpen = (text, i) => {
+    if (!enabled) return 0;
+    if (text.startsWith(openTok, i)) return openTok.length;
+    return 0;
+  };
+  /** תואם סוגר במיקום i — {len, name} או null. בברירת המחדל: טבלת הצורות
+   * (כולל "]ם" העברי); בתוחם מותאם: התאמה מדויקת בלבד. */
+  const matchClose = (text, i) => {
+    if (!enabled) return null;
+    if (useDefault) return matchCloser(text, i);
+    if (text.startsWith(closeTok, i)) return { len: closeTok.length, name: 'custom' };
+    return null;
+  };
+  const stack = [];
+  const pairs = [];
+  const unmatchedClosers = [];
+  const depthMarks = []; // {pos, depth} sampled after processing each consumed char-run
+  let globalPos = 0;
+
+  for (const seg of segments) {
+    const text = seg.text;
+    const para = Number.isInteger(seg.paraIndex) ? seg.paraIndex : 0;
+    let i = 0;
+    while (i < text.length) {
+      const openLen = matchOpen(text, i);
+      if (openLen > 0) {
+        const gp = globalPos + i;
+        stack.push({ openPos: gp, para });
+        depthMarks.push({ pos: gp, depth: stack.length });
+        i += openLen;
+      } else {
+        const form = matchClose(text, i);
+        if (!form) {
+          depthMarks.push({ pos: globalPos + i, depth: stack.length });
+          i += 1;
+        } else if (stack.length === 0) {
+          // Doctrine: report, never silently repair. Extra chars of the closer
+          // are still consumed so positions stay consistent for downstream mappers.
+          const gp = globalPos + i;
+          unmatchedClosers.push({
+            pos: gp,
+            end: gp + form.len - 1,
+            para,
+            form: form.name,
+            note: 'דורש אימות מול מקור — אין לתקן אוטומטית'
+          });
+          depthMarks.push({ pos: gp, depth: 0 });
+          i += form.len;
+        } else {
+          const gp = globalPos + i;
+          const o = stack.pop();
+          pairs.push({
+            open: o.openPos,
+            close: gp + form.len - 1, // last character of the closer (חוזה היסטורי — נשמר)
+            // **S4.6 (ביקורת 3):** חוזה משלים לתוחמים מרובי-תווים — תחילת הסוגר
+            // ואורכו בפועל. בעבר הצרכן (block-tokenizer) התייחס ל-close כאילו היה
+            // תחילת התוחם והוסיף שוב את אורך התוחם המוגדר — חיתוך שגוי ב-']]'/END.
+            closeStart: gp,
+            closeLen: form.len,
+            depth: stack.length + 1,  // 1 = outermost pair (matches block-tokenizer convention)
+            startPara: o.para,
+            endPara: para,
+            crossParagraph: o.para !== para,
+            closerForm: form.name
+          });
+          depthMarks.push({ pos: gp, depth: stack.length });
+          i += form.len;
+        }
+      }
+    }
+    globalPos += text.length;
+  }
+
+  // Unclosed openers are reported too (same doctrine: flag, don't fix).
+  const unmatchedOpeners = stack.map(o => ({
+    pos: o.openPos,
+    para: o.para,
+    note: 'פותח ללא סוגר — דורש אימות מול מקור'
+  }));
+
+  return {
+    pairs,
+    unmatchedClosers,
+    unmatchedOpeners,
+    /** Nesting depth active at a global position (0 = outside any note). */
+    depthAt(pos) {
+      let best = 0;
+      for (const m of depthMarks) if (m.pos <= pos) best = m.depth; else break;
+      return best;
+    },
+    scopeMap: {
+      totalPairs: pairs.length,
+      crossParagraphCount: pairs.filter(p => p.crossParagraph).length,
+      hebrewClosers: pairs.filter(p => p.closerForm === 'hebrew-mem-sofit').length,
+      delimiters: enabled ? { open: openTok, close: closeTok } : null // S4.5: מה בפועל נסרק
+    }
+  };
+}
+
+module.exports = { scanBrackets, matchCloser, CLOSER_FORMS };
+
+};
+__modules["src/engine/parser/document-structure.js"] = function (require, module, exports) {
+// src/engine/parser/document-structure.js — source-level heading validity (D-100)
+'use strict';
+
+const { scanBrackets } = require('./bracket-scanner');
+
+function hasMeaningfulText(value) {
+  return /[\p{L}\p{N}]/u.test(String(value == null ? '' : value));
+}
+
+function withoutFootnotes(value, opts = {}) {
+  const source = String(value == null ? '' : value);
+  if (!source) return source;
+  const scan = scanBrackets([{ text: source, paraIndex: 0 }], {
+    open: opts.fnOpen,
+    close: opts.fnClose
+  });
+  const ranges = scan.pairs.filter(pair => pair.depth === 1).sort((a, b) => b.open - a.open);
+  let visible = source;
+  for (const pair of ranges) visible = visible.slice(0, pair.open) + visible.slice(pair.close + 1);
+  return visible;
+}
+
+function paragraphHasBodyText(token) {
+  const parts = Array.isArray(token.parts)
+    ? token.parts
+    : [{ kind: 'text', value: token.raw != null ? token.raw : token.text }];
+  return parts.some(part => part && part.kind === 'text' && hasMeaningfulText(part.value));
+}
+
+function validateHeadingStructure(tokens, opts = {}) {
+  const input = Array.isArray(tokens) ? tokens : [];
+  const issues = [];
+  let pending = [];
+  let headingCount = 0;
+
+  for (let index = 0; index < input.length; index++) {
+    const token = input[index] || {};
+    if (token.type === 'heading') {
+      headingCount++;
+      const level = Number(token.level);
+      const info = {
+        level,
+        tokenId: token.id || null,
+        tokenIndex: index + 1,
+        title: String(token.text == null ? '' : token.text)
+      };
+      if (!Number.isInteger(level) || level < 0 || level > 7) {
+        issues.push({ code: 'heading-level-invalid', ...info });
+        pending = [info];
+        continue;
+      }
+      const titleWithoutNotes = withoutFootnotes(info.title, opts);
+      if (!hasMeaningfulText(titleWithoutNotes)) {
+        const containsNoteMarkup = info.title.trim() !== titleWithoutNotes.trim();
+        issues.push({
+          code: containsNoteMarkup ? 'heading-title-note-only' : 'heading-title-no-meaningful-text',
+          ...info
+        });
+      }
+      if (pending.length) {
+        const previous = pending[pending.length - 1];
+        if (!(level > previous.level)) {
+          issues.push({
+            code: 'heading-chain-not-increasing',
+            previousLevel: previous.level,
+            previousTokenId: previous.tokenId,
+            previousTokenIndex: previous.tokenIndex,
+            level,
+            tokenId: info.tokenId,
+            tokenIndex: info.tokenIndex
+          });
+          pending = [info];
+          continue;
+        }
+      }
+      pending.push(info);
+      continue;
+    }
+    if (token.type === 'paragraph' && paragraphHasBodyText(token)) pending = [];
+  }
+
+  if (pending.length) {
+    const last = pending[pending.length - 1];
+    issues.push({
+      code: 'heading-chain-no-body-text',
+      level: last.level,
+      tokenId: last.tokenId,
+      tokenIndex: last.tokenIndex,
+      chain: pending.map(item => item.level)
+    });
+  }
+  return { ok: issues.length === 0, issues, headingCount };
+}
+
+function formatHeadingStructureIssues(issues) {
+  return (Array.isArray(issues) ? issues : []).map(issue => {
+    const at = issue.tokenId ? ' [' + issue.tokenId + ']' : '';
+    switch (issue.code) {
+      case 'heading-title-note-only':
+        return 'כותרת H' + issue.level + at + ' מכילה הערת שוליים בלבד ואינה כוללת טקסט כותרת עצמאי.';
+      case 'heading-title-no-meaningful-text':
+        return 'כותרת H' + issue.level + at + ' אינה מכילה טקסט כותרת ממשי; סימני פיסוק או קישוט בלבד אינם כותרת.';
+      case 'heading-chain-not-increasing':
+        return 'רצף כותרות ללא טקסט גוף אינו היררכי: אחרי H' + issue.previousLevel +
+          ' מופיעה H' + issue.level + at +
+          '. יש להשלים תוכן במקטע הקודם לפני מעבר לרמה זהה או גבוהה יותר.';
+      case 'heading-chain-no-body-text':
+        return 'שרשרת הכותרות ' + issue.chain.map(level => 'H' + level).join(' → ') +
+          ' מסתיימת ללא פסקת גוף בעלת טקסט ממשי; הערות שוליים לבדן אינן נחשבות תוכן.';
+      case 'heading-level-invalid':
+        return 'נמצאה כותרת ברמה שאינה נתמכת (' + issue.level + ')' + at + '; הרמות התקינות הן H0–H7.';
+      default:
+        return 'נמצאה הפרת מבנה כותרות (' + (issue.code || 'unknown') + ')' + at + '.';
+    }
+  }).join('\n');
+}
+
+class DocumentStructureError extends Error {
+  constructor(issues) {
+    const detail = formatHeadingStructureIssues(issues);
+    super('מבנה מסמך לא תקין; העימוד נעצר לפני שלב המדידה:\n' + detail);
+    this.name = 'DocumentStructureError';
+    this.code = 'INVALID_DOCUMENT_STRUCTURE';
+    this.issues = Array.isArray(issues) ? issues : [];
+  }
+}
+
+function assertHeadingStructure(tokens, opts = {}) {
+  const result = validateHeadingStructure(tokens, opts);
+  if (!result.ok) throw new DocumentStructureError(result.issues);
+  return result;
+}
+
+module.exports = {
+  validateHeadingStructure,
+  assertHeadingStructure,
+  formatHeadingStructureIssues,
+  DocumentStructureError
+};
 
 };
 __modules["src/ui/settings-persistence.js"] = function (require, module, exports) {
@@ -2927,6 +3518,90 @@ function buildImudPicker(doc, opts) {
   setsWrap.appendChild(setsSel);
   wrap.appendChild(setsWrap);
 
+  // Preset נפרד ממקום בינה v20.5. בחירה טוענת preview בלבד; החלה דורשת לחיצה נפרדת.
+  // אין שינוי בשלוש ערכות המקור הרגילות או ב-default_settings הכללי.
+  const presetWrap = doc.createElement('div');
+  presetWrap.className = 'row';
+  const presetLbl = doc.createElement('label');
+  presetLbl.textContent = 'ערכת preset נוספת (מקור IMUD):';
+  presetWrap.appendChild(presetLbl);
+  const presetSel = doc.createElement('select');
+  presetSel.className = 'ctl';
+  presetSel.setAttribute('aria-label', 'בחירת preset נוסף מהמקור');
+  presetSel.appendChild(Object.assign(doc.createElement('option'), { textContent: '— בחר preset —', value: '' }));
+
+  const presetPreview = doc.createElement('div');
+  presetPreview.className = 'action-info';
+  presetPreview.setAttribute('role', 'status');
+  presetPreview.setAttribute('aria-live', 'polite');
+  presetPreview.textContent = 'בחירת ערכה תציג מקור, גרסה וסיכום השינויים לפני החלה.';
+  const presetApplyBtn = doc.createElement('button');
+  presetApplyBtn.type = 'button';
+  presetApplyBtn.className = 'btn';
+  presetApplyBtn.textContent = 'החל את הערכה לאחר preview';
+  presetApplyBtn.setAttribute('aria-label', 'החלת ערכת preset לאחר תצוגה מקדימה');
+  presetApplyBtn.disabled = true;
+
+  let pendingPresetResult = null;
+  presetSel.addEventListener('change', async () => {
+    const choice = presetSel.value;
+    pendingPresetResult = null;
+    presetApplyBtn.disabled = true;
+    if (!choice) {
+      presetPreview.textContent = 'לא נבחרה ערכת preset.';
+      return;
+    }
+    const sep = choice.indexOf('::');
+    const presetId = sep >= 0 ? choice.slice(0, sep) : '';
+    const setId = sep >= 0 ? choice.slice(sep + 2) : '';
+    if (!presetId || !setId) {
+      presetPreview.textContent = 'בחירת preset אינה תקינה.';
+      return;
+    }
+    presetPreview.textContent = 'טוען תצוגה מקדימה — ההגדרות הפעילות עדיין לא משתנות…';
+    try {
+      const result = await opts.imudLibrary.loadSettingPreset(presetId, setId);
+      // בחירה חדשה בזמן טעינה מבטלת תצוגה מקדימה ישנה.
+      if (presetSel.value !== choice) return;
+      pendingPresetResult = result;
+      const current = opts.getSettings ? opts.getSettings() : {};
+      const changed = Object.keys(result.settings || {}).filter((key) => !Object.is(current[key], result.settings[key])).length;
+      const unmapped = Array.isArray(result.unmapped) ? result.unmapped.length : 0;
+      presetPreview.textContent =
+        `תצוגה מקדימה: ${result.presetLabel} — ${result.setLabel} | מקור: ${result.source} | גרסה: ${result.version}. ` +
+        `${result.report.mapped} הגדרות ימופו, ${result.report.merged} יאוחדו, ${result.report.uiState} ערכי UI יישמרו, ${result.report.removed} יירשמו כהוסרו; ` +
+        `${changed} ערכים שונים מההגדרות הפעילות, ${unmapped} מפתחות ללא מיפוי.`;
+      presetApplyBtn.disabled = false;
+    } catch (e) {
+      if (presetSel.value !== choice) return;
+      pendingPresetResult = null;
+      presetPreview.textContent = 'טעינת תצוגה מקדימה נכשלה: ' + (e && e.message ? e.message : e);
+      if (opts.onNotice) opts.onNotice('טעינת ה-preset נכשלה: ' + (e && e.message ? e.message : e));
+    }
+  });
+  presetApplyBtn.addEventListener('click', () => {
+    const result = pendingPresetResult;
+    if (!result) return;
+    const choice = presetSel.value;
+    if (choice !== `${result.presetId}::${result.setId}`) {
+      pendingPresetResult = null;
+      presetApplyBtn.disabled = true;
+      presetPreview.textContent = 'הבחירה השתנתה; יש לטעון תצוגה מקדימה חדשה.';
+      return;
+    }
+    if (opts.onApplyLegacyDefaults) opts.onApplyLegacyDefaults(result.settings);
+    presetApplyBtn.disabled = true;
+    pendingPresetResult = null;
+    presetPreview.textContent = `הוחלה ${result.presetLabel} — ${result.setLabel} (מקור ${result.source}, גרסה ${result.version}).`;
+    if (opts.onNotice) opts.onNotice(
+      `הוחל ${result.presetLabel} — ${result.setLabel}: ${result.report.mapped} הגדרות מופו, ${result.report.uiState} ערכי UI נשמרו. ברירות המחדל הרגילות לא שונו.`
+    );
+  });
+  presetWrap.appendChild(presetSel);
+  presetWrap.appendChild(presetPreview);
+  presetWrap.appendChild(presetApplyBtn);
+  wrap.appendChild(presetWrap);
+
   // כפתור ברירות המחדל המקוריות — ייבוא 264 המפתחות דרך טבלת ה-disposition
   const defaultsBtn = doc.createElement('button');
   defaultsBtn.type = 'button'; defaultsBtn.className = 'btn';
@@ -2950,12 +3625,22 @@ function buildImudPicker(doc, opts) {
   (async () => {
     try {
       const settingsNow = opts.getSettings ? opts.getSettings() : {};
-      // ערכות סגנון-ספר (setting_sets) — אוכלוס הבורר
+      // ערכות סגנון-ספר רגילות — נשארות בקבוצה המקורית.
       try {
         for (const name of opts.imudLibrary.listSettingSets()) {
           setsSel.appendChild(Object.assign(doc.createElement('option'), { textContent: name, value: name }));
         }
       } catch (e) { /* אין ספריית ערכות — הבורר נשאר עם ברירת המחדל */ }
+      // קבוצות preset מבודדות — מוצגות עם מקור/גרסה/שם, נטענות רק לאחר בחירה.
+      try {
+        for (const preset of opts.imudLibrary.listSettingPresets()) {
+          for (const set of preset.sets) {
+            const value = `${preset.id}::${set.id}`;
+            const label = `${preset.label} — ${set.label}`;
+            presetSel.appendChild(Object.assign(doc.createElement('option'), { textContent: label, value }));
+          }
+        }
+      } catch (e) { /* ספריות ללא presets נוספים — הבורר נשאר ריק */ }
       const byCollection = new Map();
       for (const { pick, sel } of selects) {
         if (!byCollection.has(pick.collection)) {
@@ -15226,7 +15911,25 @@ class EventLog {
   }
 
   toTraceV2() {
-    return { schema: 'trace-v2', droppedEvents: this.droppedEvents, events: this.events.slice() };
+    const recording = this.verbosity !== 'off';
+    const omittedFields = [];
+    if (!recording) omittedFields.push('events');
+    else {
+      if (this.verbosity === 'minimal') omittedFields.push('payload');
+      if (this.verbosity !== 'full') omittedFields.push('pageIndex');
+    }
+    return {
+      schema: 'trace-v2',
+      capture: {
+        recording,
+        verbosity: this.verbosity,
+        eventStreamComplete: recording && this.droppedEvents === 0,
+        droppedEvents: this.droppedEvents,
+        omittedFields
+      },
+      droppedEvents: this.droppedEvents,
+      events: this.events.slice()
+    };
   }
 }
 
@@ -15592,6 +16295,18 @@ function buildTestingTab(doc, opts) {
   root.appendChild(traceSec);
 
   let traceEvents = [];
+  let traceCapture = null;
+  function traceCaptureSummary() {
+    if (!traceCapture) return 'מצב איסוף לא ידוע (trace קודם/ישן)';
+    if (!traceCapture.recording) return 'איסוף trace כבוי — רשימה ריקה אינה הוכחה שלא התקבלו החלטות';
+    const mode = `איסוף פעיל (${traceCapture.verbosity})`;
+    const completeness = traceCapture.eventStreamComplete
+      ? 'רצף האירועים שלם לפי רמת הפירוט שנבחרה'
+      : `רצף אירועים חלקי (${traceCapture.droppedEvents || 0} אירועים נדחו)`;
+    const omitted = Array.isArray(traceCapture.omittedFields) && traceCapture.omittedFields.length
+      ? ` · הושמטו במכוון: ${traceCapture.omittedFields.join(', ')}` : '';
+    return `${mode} · ${completeness}${omitted}`;
+  }
   function renderTrace() {
     const stage = stageSel.value;
     ttBody.textContent = '';
@@ -15612,7 +16327,7 @@ function buildTestingTab(doc, opts) {
       }
       ttBody.appendChild(tr);
     }
-    traceMeta.textContent = `${shown} אירועים מוצגים מתוך ${traceEvents.length}`;
+    traceMeta.textContent = `${shown} אירועים מוצגים מתוך ${traceEvents.length} · ${traceCaptureSummary()}`;
   }
   stageSel.addEventListener('change', renderTrace);
 
@@ -15635,6 +16350,7 @@ function buildTestingTab(doc, opts) {
 
     // שלבי המסלול הקיימים → בורר
     traceEvents = (serializedResult.trace && serializedResult.trace.events) || [];
+    traceCapture = (serializedResult.trace && serializedResult.trace.capture) || null;
     const stages = [...new Set(traceEvents.map(e => e.stage))];
     stageSel.textContent = '';
     {
@@ -16010,6 +16726,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
   const pages = [];
   let pageIdx = 0;
   let seqCounter = 0; // סדר הצבה — סדר קריאה (תיקון P0-3)
+  const sourceLineIndex = new WeakMap(); // source block line object -> stable block-local line index
   const lineH = Math.round(settings['body-font-size-pt'] * (96 / 72) * settings['body-line-height']);
   const imbMax = settings['imbalance-max-delta-px'];
 
@@ -16107,11 +16824,13 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
     const gap = meta.firstOfBlock ? blockGapPx(settings, lineH) : 0;
     let pendingGap = gap;
     for (const ln of lines) {
+      const lineIdx = sourceLineIndex.get(ln);
+      const lineMeta = Number.isInteger(lineIdx) ? { ...meta, lineIdx } : meta;
       let placed = false;
       for (let c = 0; c < cur.columns.length && !placed; c++) {
         const needPx = ln.heightPx + pendingGap - 0.5;
         if (colCapacity(cur.template, cur) - usedHeight(cur.columns[c], cur) >= needPx) {
-          cur.columns[c].push({ ...ln, meta, seq: seqCounter++ });
+          cur.columns[c].push({ ...ln, meta: lineMeta, seq: seqCounter++ });
           pendingGap = 0;
           placed = true;
         }
@@ -16119,7 +16838,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
       if (!placed) {
         flushPage();
         cur = newPage(meta.forceType || PAGE_TYPES.REGULAR);
-        cur.columns[0].push({ ...ln, meta, seq: seqCounter++ }); // טור חדש/עמוד חדש → ללא gap
+        cur.columns[0].push({ ...ln, meta: lineMeta, seq: seqCounter++ }); // טור חדש/עמוד חדש → ללא gap
         pendingGap = 0;
       }
     }
@@ -16168,24 +16887,25 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
           }
           if (cutIdx >= words.length) {
             // כל ההערה נכנסת בגבול התקרה — אין צורך בפיצול
-            cur.footnotes.push({ ...n, heightPx: h, mode: isCont ? 'split-rest' : 'normal', isContinuation: isCont });
+            cur.footnotes.push({ ...n, fragmentIndex: Number.isInteger(n.fragmentIndex) ? n.fragmentIndex : 0, heightPx: h, mode: isCont ? 'split-rest' : 'normal', isContinuation: isCont });
             continue;
           }
           const firstText = words.slice(0, cutIdx).join(' ');
           const restText = words.slice(cutIdx).join(' ');
-          cur.footnotes.push({ ...n, text: firstText, heightPx: linesFit * fnLH, lineH: fnLH, mode: 'split-first', linesShown: linesFit });
-          pendingBarNotes.push({ ...n, text: restText, isContinuation: true, continuationOf: n.tokenId, mode: 'split-rest' });
+          const fragmentIndex = Number.isInteger(n.fragmentIndex) ? n.fragmentIndex : 0;
+          cur.footnotes.push({ ...n, text: firstText, fragmentIndex, heightPx: linesFit * fnLH, lineH: fnLH, mode: 'split-first', linesShown: linesFit });
+          pendingBarNotes.push({ ...n, text: restText, fragmentIndex: fragmentIndex + 1, isContinuation: true, continuationOf: n.tokenId, mode: 'split-rest' });
           eventLog.emit('notes-budget', 'fn-split', { token: n.tokenId, marker: n.marker, barMax, firstWords: cutIdx }, cur.index);
           continue;
         }
         if (settings['long-footnote-policy'] === 'move-whole') {
-          pendingBarNotes.push({ ...n, mode: 'moved-whole', deferredToNextPage: true });
+          pendingBarNotes.push({ ...n, fragmentIndex: Number.isInteger(n.fragmentIndex) ? n.fragmentIndex : 0, mode: 'moved-whole', deferredToNextPage: true });
           eventLog.emit('notes-budget', 'fn-moved-whole', { token: n.tokenId, marker: n.marker }, cur.index);
           continue;
         }
         if (settings['long-footnote-policy'] === 'reject-to-body' && rejectToBody(n, `bar overflow ${h}>${barMax}`)) continue;
       }
-      cur.footnotes.push({ ...n, heightPx: h, lineH: Math.round((settings['body-font-size-pt'] * 0.8) * (96 / 72) * 1.25), isContinuation: isCont, mode: isCont ? 'split-rest' : 'normal' });
+      cur.footnotes.push({ ...n, fragmentIndex: Number.isInteger(n.fragmentIndex) ? n.fragmentIndex : 0, heightPx: h, lineH: Math.round((settings['body-font-size-pt'] * 0.8) * (96 / 72) * 1.25), isContinuation: isCont, mode: isCont ? 'split-rest' : 'normal' });
     }
     recomputeFnBudget(cur); // probe==reserved — פונקציה אחת (unified) לשני הצרכים
   }
@@ -16226,6 +16946,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
   for (let bi = 0; bi < blocks.length; bi++) {
     const blk = blocks[bi];
     const next = blocks[bi + 1];
+    if (Array.isArray(blk.lines)) blk.lines.forEach((line, lineIdx) => sourceLineIndex.set(line, lineIdx));
 
     // **S10 (REQ-UI-03):** התקדמות שלב הפריסה — "עומד עמוד X מתוך כ־Y" (Y מוערך;
     // מעודכן לספירה הסופית בסיום ה‑DP). בדידות 32 בלוקים — אפס השפעה על הפריסה.
@@ -16298,7 +17019,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
         if (cur.spanning || cur.columns.some(c => c.length)) { flushPage(); cur = newPage(PAGE_TYPES.REGULAR); }
         const bandH = blk.lines.reduce((s, ln) => s + (ln.heightPx || 0), 0);
         cur.spanning = {
-          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part }, seq: seqCounter++ })),
+          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part, lineIdx: i }, seq: seqCounter++ })),
           heightPx: bandH,
           customStyle: cs
         };
@@ -16309,6 +17030,8 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
 
     // תקציב הערות לפני מיקום (F-17 probe==reserved, כולל מדיניות הערה ארוכה)
     if (blk.kind === 'paragraph') reserveNotes(blk);
+    // reserveNotes/rejectToBody may append a recovery line; refresh block-local indices.
+    if (Array.isArray(blk.lines)) blk.lines.forEach((line, lineIdx) => sourceLineIndex.set(line, lineIdx));
 
     // **03.11(ד) — span_1col של המקור ל-H3–H6 (mode=full-width):** עד כאן כותרת
     // שנמדדה ברוחב מלא (674px) הוצבה בטור של 270px — שורה ברוחב 471px בטור
@@ -16323,7 +17046,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
       if (!cur.spanning && cur.template.columns.length >= 2) {
         const bandH3 = blk.lines.reduce((s, ln) => s + (ln.heightPx || 0), 0);
         cur.spanning = {
-          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part }, seq: seqCounter++ })),
+          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part, lineIdx: i }, seq: seqCounter++ })),
           heightPx: bandH3,
           titleTopPadPx: 0,
           orn: null
@@ -16354,7 +17077,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
         const topPad = orn && orn.scope && orn.scope.signTop ? orn.topPx : 0;
         const bottomPad = orn && orn.scope && orn.scope.signBottom ? orn.bottomPx : 0;
         cur.spanning = {
-          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part }, seq: seqCounter++ })),
+          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part, lineIdx: i }, seq: seqCounter++ })),
           heightPx: topPad + bandH + bottomPad,
           titleTopPadPx: topPad,
           orn: orn || null
@@ -17400,6 +18123,9 @@ function fixDropWordInColumns(columnLines, minLen = 3, opts = {}) {
       if (mergedW == null || mergedW > colW - fitEps) continue; // לא נכנס — המילה נשארת (status quo)
       // משלבים את המילה הנופלת לתוך השורה הראשונה של הטור הבא (גרירה)
       nextFirst.words.unshift(...last.words);
+      if (Array.isArray(last.sourceWordRefs) || Array.isArray(nextFirst.sourceWordRefs)) {
+        nextFirst.sourceWordRefs = [...(last.sourceWordRefs || []), ...(nextFirst.sourceWordRefs || [])];
+      }
       nextFirst.widthPx = mergedW; // רוחב השורה אחרי המיזוג (נצרך ל-runt/balance)
       lines.pop();
       fixed = true;
@@ -17918,101 +18644,6 @@ function buildCaretMap(rawText, serializedResult) {
 }
 
 module.exports = { buildCaretMap };
-
-};
-__modules["src/engine/parser/dfa-lexer.js"] = function (require, module, exports) {
-// src/engine/parser/dfa-lexer.js — Layer 1: metadata recognition ONLY in preamble (REQ-PAR-01, S4.5)
-'use strict';
-
-/**
- * **S4.5 (ביקורת 03.11, סקירה 2):** מזהי הטקסט של הפרויקט המקורי — רשימה מלאה.
- * המקור: default_settings.json + טקסט ברירת המחדל של IMUD_TORANI (app.js):
- *   שם הספר - … / נושא - … / נושא מפורט - … / פרטי מהדורא - … / שם המחבר - … /
- *   מקום ושנת הוצאה - … / שמירת זכויות - … / פרטי הוצאה לאור - … /
- *   פרטי קשר - … / פרטים נוספים - …
- * ולצדם המפתחות הקצרים שנתמכו תמיד (ספר, מחבר, מהדורא, מקום, שנה, מהדורה,
- * editors, title). הפתיח נסגר רק בשורה ריקה/כותרת/הערת סיום — לא בשורת מטא־נתון.
- */
-const METADATA_KEYS = [
-  // ארוכים (טקסט ברירת המחדל המקורי)
-  'שם הספר', 'נושא', 'נושא מפורט', 'פרטי מהדורא', 'שם המחבר', 'מקום ושנת הוצאה',
-  'שמירת זכויות', 'פרטי הוצאה לאור', 'פרטי קשר', 'פרטים נוספים',
-  // קצרים (תמיכה היסטורית)
-  'ספר', 'מחבר', 'מהדורא', 'מקום', 'שנה', 'מהדורה', 'editors', 'title'
-];
-
-const HEADING_RE = /^(כותרת\s*([0-7])|חלק\s+([א-ת]+)|הקדמה)\s*[-–—]\s*(.+)$/;
-
-/** ברירת המחדל ההיסטורית של קידומת הערת הסיום (en-line-prefix, default_settings.json). */
-const DEFAULT_ENDNOTE_PREFIX = 'הערת סיום -';
-
-/**
- * **S4.5 (תיקון סיווג):** בניית ביטוי קידומת הערת סיום מהגדרת המשתמש.
- * קלט ריק/רווחים ⇒ null (זיהוי מבוטל — שורות נשארות פסקאות; החלטה מפורשת
- * של המשתמש, לא כשל שקט). הקידומת חייבת להסתיים במקף/מקף-ארוך/קו — אחרת
- * מוסיפים את המקף בעצמנו (ערך ההגדרה "הערת סיום" שקול ל-"הערת סיום -").
- */
-function compileEndnotePrefix(prefix) {
-  const p = String(prefix == null ? DEFAULT_ENDNOTE_PREFIX : prefix).trim();
-  if (!p) return null;
-  const withDash = /[-–—]$/.test(p) ? p : p + ' -';
-  const esc = withDash.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*').replace(/[-–—]/g, '[-–—]');
-  return new RegExp('^' + esc + '\\s*(.*)$');
-}
-
-/** **S4.5:** הוראת כותרת עמודי ההערות — צורת רבים בלבד («הערות סיום - כותרת»).
- * הצורה הבסיסית של D-40 (/^הערת\s*סיום…/) התנגשה עם מזהה התוכן ההיסטורי
- * («הערת סיום - טקסט» = הערה) וגרמה להיעלמות תוכן. רבים (העערות/הערות) = מקטע;
- * יחיד (הערת) = תמיד תוכן. */
-const ENDNOTE_CLASS_RE = /^הערות\s*סיום\s*[-–—]\s*(.+)$/;
-
-/** ביטויי ברירת המחדל (תאימות לאחור לייבוא ישיר; tokenize מקבל opts ומזהה משם). */
-const ENDNOTE_PREFIX = compileEndnotePrefix(DEFAULT_ENDNOTE_PREFIX);
-const ENDNOTE_NUMBERED = /^הערת\s*סיום\s*[-–—]?\s*([0-9]{1,4})\s*[-–—]\s*(.+)$/;
-const ENDNOTE_CLASS = ENDNOTE_CLASS_RE;
-
-/**
- * DFA states: PREAMBLE -> BODY. יציאה מ‑PREAMBLE: שורה ריקה או כותרת ראשונה.
- * שורה כמו `נושא - דין סוכה ישנה` באמצע המסמך נשארת פסקה (REQ-PAR-01 / לקח Z.ai).
- * @param {string} rawText
- * @param {object} [opts] — { endnotePrefix: string } (S4.5: מזהה מוגדר; '' = מבוטל)
- */
-function lexDocument(rawText, opts = {}) {
-  const endnoteRe = opts.endnotePrefixRe instanceof RegExp
-    ? opts.endnotePrefixRe
-    : compileEndnotePrefix(opts.endnotePrefix != null ? opts.endnotePrefix : DEFAULT_ENDNOTE_PREFIX);
-  const lines = String(rawText).replace(/\r\n?/g, '\n').split('\n');
-  const state = { phase: 'PREAMBLE' };
-  const metadata = {};
-  const body = [];
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    if (state.phase === 'PREAMBLE') {
-      if (trimmed === '') { state.phase = 'BODY'; continue; }
-      if (HEADING_RE.test(trimmed) || (endnoteRe && endnoteRe.test(trimmed)) || ENDNOTE_CLASS_RE.test(trimmed)) {
-        state.phase = 'BODY'; body.push(line); continue;
-      }
-      const m = trimmed.split(/\s+[-–—]\s+/);
-      if (m.length >= 2 && METADATA_KEYS.includes(m[0].toLowerCase())) {
-        metadata[m[0]] = m.slice(1).join(' - ');
-        continue;
-      }
-      // שורה שאינה metadata → גם היא סוגרת את הפתיח
-      state.phase = 'BODY';
-      body.push(line);
-      continue;
-    }
-    body.push(line);
-  }
-  return { metadata, bodyLines: body };
-}
-
-module.exports = {
-  lexDocument, HEADING_RE, ENDNOTE_PREFIX, ENDNOTE_NUMBERED, ENDNOTE_CLASS,
-  ENDNOTE_CLASS_RE, METADATA_KEYS, DEFAULT_ENDNOTE_PREFIX, compileEndnotePrefix
-};
 
 };
 __modules["src/ui/inline-transport.js"] = function (require, module, exports) {
@@ -20019,6 +20650,45 @@ function createImudLibrary(engine) {
    * מיוחד; ההבדלים חייבים לשרוד את הייבוא (בדיקה מחייבת ב-setting-sets.test.js). */
   const SETTING_SETS = ['תלמוד', 'פרשנות', 'קונטרס'];
 
+  // Presets שמקורם בערכות נפרדות של IMUD נשארים מבודדים מה-setting_sets הרגיל.
+  // אין auto-load ואין שינוי של default_settings.json הכללי.
+  const SETTING_PRESETS = [
+    {
+      id: 'makom-bina-v20.5',
+      label: 'מקום בינה v20.5',
+      source: 'IMUD_TORANI',
+      version: '20.5',
+      sets: [
+        { id: 'default', label: 'ברירות מחדל מלאות' },
+        { id: 'תלמוד', label: 'תלמוד' },
+        { id: 'פרשנות', label: 'פרשנות' },
+        { id: 'קונטרס', label: 'קונטרס' }
+      ]
+    }
+  ];
+
+  /** רשימת קבוצות preset נוספות; מטא-נתונים בלבד, ללא טעינת קבצים. */
+  function listSettingPresets() {
+    return SETTING_PRESETS.map(p => ({ ...p, sets: p.sets.map(s => ({ ...s })) }));
+  }
+
+  /** טעינת ערכה מתוך preset מבודד. כל קובץ עובר אותה טבלת disposition של IMUD. */
+  async function loadSettingPreset(presetId, setId) {
+    const preset = SETTING_PRESETS.find(p => p.id === presetId);
+    if (!preset) throw new Error(`preset לא מוכר: ${presetId}`);
+    const set = preset.sets.find(s => s.id === setId);
+    if (!set) throw new Error(`ערכה לא מוכרת ב-${preset.label}: ${setId}`);
+    if (!fontCatalog.loaded) await loadFontCatalog().catch(() => {});
+    const file = set.id === 'default' ? 'default_settings.json' : `setting_sets/${encodeURIComponent(set.id)}.json`;
+    const legacy = await fetchJson(`${BASE}/presets/${encodeURIComponent(preset.id)}/${file}`);
+    const { settings, unmapped, report } = importImudSettings(
+      legacy,
+      new Set(getSettingDefs().map(r => r.id)),
+      { availableFonts: fontCatalog.byFamily ? new Set(fontCatalog.byFamily.keys()) : undefined }
+    );
+    return { presetId: preset.id, presetLabel: preset.label, source: preset.source, version: preset.version, setId: set.id, setLabel: set.label, settings, unmapped, report };
+  }
+
   /** רשימת הערכות המוטמעות (שמות קבצים בלבד — לא נטענות עד בחירה). */
   function listSettingSets() { return SETTING_SETS.slice(); }
 
@@ -20177,7 +20847,7 @@ function createImudLibrary(engine) {
     return fontCatalog.loaded ? new Set(fontCatalog.byFamily.keys()) : null;
   }
 
-  return { loadFontCatalog, loadFont, loadDefaultExportFont, listDesigns, ensureDesign, ensureThemeSet, loadLegacyDefaults, loadHeadingFont, exportFontCss, resolveFamily, loadFontStack, catalogFamilies, listSettingSets, loadSettingSet, fontStatus, catalogEntries };
+  return { loadFontCatalog, loadFont, loadDefaultExportFont, listDesigns, ensureDesign, ensureThemeSet, loadLegacyDefaults, loadHeadingFont, exportFontCss, resolveFamily, loadFontStack, catalogFamilies, listSettingSets, loadSettingSet, listSettingPresets, loadSettingPreset, fontStatus, catalogEntries };
 }
 
 module.exports = { createImudLibrary, DESIGN_FILES };
