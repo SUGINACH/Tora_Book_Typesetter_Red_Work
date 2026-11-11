@@ -439,7 +439,7 @@ function createStepAuditModelAdapter(options = {}) {
       // Model-backed ornaments and heading/shaar dividers already carry exact rects.
       for (const decoration of page.decorations || []) {
         const slot = decoration.slot || decoration.kind || 'decoration';
-        const stable = decoration.rollbackKey || decoration.tokenId || null;
+        const stable = decoration.rollbackKey || decoration.tokenId || decoration.sourceKey || null;
         const objectId = stable ? null : objectIdOf(decoration, 'decoration');
         if (!stable) incomplete('decoration-without-stable-source-id');
         const elementId = 'decoration:' + pageId + ':' + slot + ':' + (stable || objectId);
@@ -449,7 +449,7 @@ function createStepAuditModelAdapter(options = {}) {
           parentId: pageId,
           geometry: [decoration.x, decoration.y, decoration.w, decoration.h].every(Number.isFinite)
             ? { x: decoration.x, y: decoration.y, w: decoration.w, h: decoration.h } : null,
-          attributes: { kind: decoration.kind || null, slot, kindStyle: decoration.kindStyle || null, rollbackKey: decoration.rollbackKey || null },
+          attributes: { kind: decoration.kind || null, slot, kindStyle: decoration.kindStyle || null, rollbackKey: decoration.rollbackKey || null, tokenId: decoration.tokenId == null ? null : String(decoration.tokenId), sourceKey: decoration.sourceKey || null },
           style: { image: decoration.image || null },
           textDigest: digestText('')
         });
