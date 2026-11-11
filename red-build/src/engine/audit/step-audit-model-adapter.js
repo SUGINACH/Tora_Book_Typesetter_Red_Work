@@ -50,14 +50,14 @@ function activeIssue(issue) {
 
 function targetToken(target) {
   if (typeof target !== 'string') return null;
-  const m = target.match(/(?:line@)?(t\d+)(?:@p\d+c\d+)?/);
+  const m = target.match(/^(?:line@)?(t\d+)(?:@p\d+c\d+)?$/);
   return m ? m[1] : null;
 }
 
 function targetSequence(target) {
   if (typeof target !== 'string') return null;
-  const m = target.match(/(?:@seq|seq[:#])([0-9]+)/);
-  return m ? Number(m[1]) : null;
+  const m = target.match(/^(?:(?:page#|p)\d+)?@seq(\d+)$|^seq[:#](\d+)$/);
+  return m ? Number(m[1] || m[2]) : null;
 }
 
 function parsePageTarget(target) {

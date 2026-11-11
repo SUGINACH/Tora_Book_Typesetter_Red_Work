@@ -205,6 +205,64 @@ describe('StepAudit RED model adapter', () => {
     assert(snap.capture.reasons.includes('decoration-without-stable-source-id'));
   });
 
+  it('does not extract token or sequence IDs from opaque target strings', () => {
+    const adapter = createStepAuditModelAdapter();
+    const page = makePage(0, [[line(10, 't10', 'שורה')], []]);
+    const ledger = { issues: new Map([
+      ['opaque-token', {
+        issue_id: 'opaque-token', kind: 'paren-cross-boundary', target: 'paren@span-t10', page: 0,
+        first_seen_stage: 'protections', status: 'persists', transitions: [], candidates: []
+      }],
+      ['opaque-seq', {
+        issue_id: 'opaque-seq', kind: 'paren-cross-boundary', target: 'paren@seq10', page: 0,
+        first_seen_stage: 'protections', status: 'persists', transitions: [], candidates: []
+      }]
+    ]) };
+    const snap = adapter.snapshot({
+      pages: [page], ledger, stage: 'protections', seq: 1, settings: {},
+      evaluatedKindsByPage: { 'page-object-1': ['paren-cross-boundary'] }
+    });
+    assertEq(snap.issues.map((issue) => issue.mapStatus), ['unmapped', 'unmapped']);
+  });
+
+  it('uses endnote title-band offset and full content width for a one-column endnote page', () => {
+    const adapter = createStepAuditModelAdapter();
+    const note = { tokenId: 't88', noteIndex: 2, marker: '3', text: 'הערת סיום', heightPx: 44 };
+    const page = makePage(0, [[note]], {
+      type: 'endnotes', heading: 'הערות סיום', titleBandPx: 40,
+      columns: [[note]]
+    });
+    const snap = adapter.snapshot({
+      pages: [page], stage: 'ledger-finalize', seq: 1, settings: {},
+      evaluatedKindsByPage: { 'page-object-1': [] }
+    });
+    const column = snap.checkpoint.pages[0].elements.find((element) => element.role === 'column');
+    const endnote = snap.checkpoint.pages[0].elements.find((element) => element.role === 'endnote-fragment');
+    assertEq(column.geometry, { x: 50, y: 120, w: 700, h: 880 });
+    assertEq(endnote.geometry, { x: 50, y: 120, w: 700, h: 44 });
+    assertEq(endnote.parentId, 'column:page-object-1:0');
+  });
+
+  it('projects TOC group members as separate row geometries', () => {
+    const adapter = createStepAuditModelAdapter();
+    const page = makePage(0, [[], []], {
+      type: 'toc-general',
+      toc: { rows: [{ kind: 'group', items: [
+        { tokenId: 't1', level: 3, text: 'כותרת א', label: '12' },
+        { tokenId: 't2', level: 3, text: 'כותרת ב', label: '13' }
+      ] }] }
+    });
+    const snap = adapter.snapshot({
+      pages: [page], stage: 'toc', seq: 1, settings: {},
+      evaluatedKindsByPage: { 'page-object-1': [] }
+    });
+    const items = snap.checkpoint.pages[0].elements.filter((element) => element.role === 'toc-group-item');
+    assertEq(items.map((element) => element.geometry), [
+      { x: 18, y: 70, w: 60, h: 24 },
+      { x: 98, y: 70, w: 60, h: 24 }
+    ]);
+  });
+
   it('records a header separator as an explicit incomplete model element rather than inventing its rectangle', () => {
     const adapter = createStepAuditModelAdapter({
       projectPage: () => ({
