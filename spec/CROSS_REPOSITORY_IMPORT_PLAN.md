@@ -163,3 +163,10 @@ No general all-stage checkpoint instrumentation is active. No all-mutation opera
 ## 11. Ornament audit identity — 12.11.2026
 
 Decoration records now carry semantic source anchors from ornament-plan: H2/H3 heading token, heading-divider rollback key + token, shaar-divider page-scoped sourceKey, and chapter-end source token/sourceKey. The adapter consumes these keys, so recreated decoration objects remain comparable across checkpoints. Object-only decorations are still marked incomplete. Geometry/layout decisions are unchanged.
+
+
+## 12. Final validated checkpoint — 12.11.2026
+
+On HEAD 0f261eabc468f7515c83e01d36f1462ae400ae20, all configured gates passed: CI, layout invariants (including very-long corpus), Worker bundle rebuild/D-65 determinism, and local Full Math Audit. The semantic decoration identity test (tokenId + sourceKey) is included and passed in the adapter unit suite (21/21).
+
+The remaining StepAudit scope is generic all-stage checkpoint capture, operationId linkage over every mutation, reducer integration over a full real run, and the issue-centered Testing Tab. The current PR remains open and unmerged.

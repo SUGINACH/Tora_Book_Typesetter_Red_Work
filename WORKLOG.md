@@ -3116,3 +3116,34 @@ P6/P7 אינם בשימוש כקריטריוני קבלה; לא שונו parser,
 
 ### 3. בדיקת שערים נדרשת אחרי הרחבת sourceKey
 ה-commit הבא כולל בדיקת sourceKey מפורשת ותיעוד. יש לבדוק שוב את ארבעת ה-workflows על אותו HEAD חדש; אין להסתפק בתוצאות 60675e60 לבדיקת ה-unit החדשה.
+
+
+## Session 17 — אימות סופי של StepAudit/עיטורים (12.11.2026)
+
+### 1. זהויות מקור לעיטורים
+ה-commit d70964f87d204d9c2deff3c4fe60d0f78e4ff909 הוסיף tokenId לעיטורי H2/H3 ולמפרידי כותרות; heading-divider שומר rollbackKey; shaar-divider מקבל sourceKey לפי page.type; chapter-end מקבל tokenId של השורה האחרונה או sourceKey page-scoped.
+
+ה-commit 60675e60f4dddd49336b7c488e6601433121e189 הוסיף ל-adapter תמיכה ב-sourceKey ול-unit regression של object חדש עם אותו tokenId אך geometry שונה. ה-commit 0f261eabc468f7515c83e01d36f1462ae400ae20 הרחיב את אותה בדיקה גם ל-sourceKey של shaar-divider. הבדיקה מוודאת אותו elementId לאורך snapshots, moved/resized וללא added/removed.
+
+ה-provenance metadata אינו נכנס ל-layoutHash/bodyGeometryHash; לא חל שינוי בהחלטות DP, מדידה, balancing או renderer.
+
+### 2. תוצאות שערים סופיות
+כל השערים עברו על HEAD 0f261eabc468f7515c83e01d36f1462ae400ae20:
+- CI — success: test (18), test (20), test (22), layout-audit.
+- Layout invariants — success; very-long-corpus success.
+- Rebuild Worker bundles — success; D-65 Verify deterministic bundle hash success.
+- Full Math Audit — success; local job success על הקורפוס הגדול (291,719 words, כ-1,038 pages); live job skipped לפי תצורת workflow.
+- StepAudit reducer 13/13; StepAudit model adapter 21/21 בכל shards; typography 17/17; E2E pipeline 16/16; S8 decoration 48/48; S10 UI 44/44.
+- לא נותרו failed jobs ב-HEAD זה.
+
+### 3. מצב PR
+PR #6 נשאר open, merged=false, mergeable=true. תיאורו עודכן לתיאור אמיתי של היקף העבודה: StepAudit reducer, RED model adapter, מסלול סוגריים, זהויות עיטורים והפערים שנותרו. אין לבצע merge בשלב זה.
+
+### 4. פערים שנותרו
+1. generic checkpoint producer לכל שלבי pipeline ולא רק adapter שמוכן לקבל מודל.
+2. operationId/linkage אחיד סביב mutations ב-DP/retreat/repair.
+3. בניית issue windows על פני ריצה מלאה עם capture completeness.
+4. Testing Tab UI להצגת timeline ומצב כל האחים.
+5. Stress audit של StepAudit עצמו על הקורפוס הגדול, בנפרד מ-Full Math Audit של מנוע העימוד.
+
+השלב הבא המומלץ: pure checkpoint producer/contract עם snapshots plain-JSON ו-predicate coverage מפורש; לאחריו no-op capture proof והשוואת hashes, ורק לאחר מכן opt-in instrumentation. אין להתחיל UI לפני שה-capture וה-linkage מוכחים.

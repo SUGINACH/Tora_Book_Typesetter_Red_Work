@@ -477,3 +477,26 @@
 - בדיקת יחידה משחזרת עיטור כ-object חדש בשלב הבא ומוודאת שה-delta מדווח moved/resized על אותו elementId, ללא added/removed. הבדיקה מכסה tokenId וגם sourceKey.
 
 הוספת שדות אלו היא provenance בלבד. layoutHash ו-bodyGeometryHash ב-dp-planner.js מבוססים על עמוד/טורים/טוקנים/מילים/seq ואינם קוראים page.decorations או את שדות המקור החדשים; ה-no-op הגאומטרי נשאר בתוקף.
+
+
+## 17. אימות זהויות עיטורים — 12.11.2026
+
+הושלמו זהויות מקור לעיטורי CP4:
+- H2/H3: tokenId של הכותרת.
+- heading-divider: rollbackKey יחד עם tokenId.
+- shaar-divider: sourceKey ייחודי ל-page.type.
+- chapter-end: tokenId של השורה האחרונה או sourceKey page-scoped.
+- adapter: rollbackKey/tokenId/sourceKey קודם ל-object identity; object-only remains incomplete.
+
+הבדיקה משחזרת אובייקטי decoration בין checkpoints ומוודאת שה-delta מזהה את אותו element כ-moved/resized, ללא added/removed. היא מכסה גם tokenId וגם sourceKey.
+layoutHash ו-bodyGeometryHash אינם קוראים את page.decorations או את metadata החדשים; לא חל שינוי בפריסה או במדידת הגוף.
+
+**אימות אחרון — HEAD 0f261eabc468f7515c83e01d36f1462ae400ae20:**
+- CI: success; שלושת shards ו-layout-audit success.
+- Layout invariants: success; layout-invariants ו-very-long-corpus success.
+- Rebuild Worker bundles: success; Verify D-65 bundle determinism success.
+- Full Math Audit: success; local audit על הקורפוס הגדול success, live job skipped לפי תצורת workflow.
+- Unit suites: StepAudit reducer 13/13, model adapter 21/21 בכל שלושת ה-shards, typography 17/17.
+- E2E pipeline 16/16; S8 decoration 48/48; S10 UI 44/44; יתר חבילות ה-CI עברו ללא כשל.
+
+אין להסיק מכך ש-StepAudit מלא הושלם: חסרים עדיין generic checkpoint producer בכל stages, operationId אחיד לכל mutation, full-run issue-window reduction ו-Testing Tab UI.

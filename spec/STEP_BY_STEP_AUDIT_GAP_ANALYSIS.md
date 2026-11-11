@@ -202,3 +202,14 @@ The next safe step is a pure checkpoint producer over serialized RED page-model 
 ## 11. Ornament source identity — 12.11.2026
 
 H2/H3 ornaments, shaar dividers and chapter-end ornaments now carry tokenId/sourceKey provenance at creation in ornament-plan.js. The model adapter uses these keys before object identity and remains conservative when no semantic key exists. A unit regression covers recreated decoration objects and verifies a stable moved/resized delta. These are metadata-only additions; layout/body hashes exclude decoration metadata.
+
+
+## 12. Final validation snapshot — 12.11.2026
+
+HEAD 0f261eabc468f7515c83e01d36f1462ae400ae20 passed:
+- CI (all three test shards + layout-audit)
+- Layout invariants + very-long corpus
+- Worker bundle rebuild + D-65 deterministic hash
+- Full Math Audit local run (largest valid corpus; live job skipped by workflow configuration)
+
+The final sourceKey ornament identity regression is included: model-adapter 21/21, reducer 13/13, pipeline E2E 16/16, S8 decoration 48/48. The generic all-stage checkpoint producer, full mutation operation linkage, reducer over a real complete run, and Testing Tab UI are still open.
