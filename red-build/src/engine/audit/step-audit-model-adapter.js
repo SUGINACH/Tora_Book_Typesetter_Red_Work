@@ -4,7 +4,6 @@
 'use strict';
 
 const crypto = require('crypto');
-const { columnDividerGeometry } = require('../decoration/dividers');
 
 function digestText(value) {
   return crypto.createHash('sha256').update(String(value == null ? '' : value), 'utf8').digest('hex');
@@ -232,9 +231,12 @@ function createStepAuditModelAdapter(options = {}) {
         const columnId = 'column:' + pageId + ':' + ci;
         const usedHeight = (column || []).reduce((sum, line) =>
           sum + (line.heightPx || 0) * (line.aqStretch || 1), 0);
-        const colX = tc && Number.isFinite(tc.x) ? tc.x : null;
-        const colW = tc && Number.isFinite(tc.w) ? tc.w : null;
-        const yTop = boxTop != null ? boxTop + spanHeight : null;
+        const isSingleEndnoteColumn = page.type === 'endnotes' && cols.length === 1;
+        const colX = isSingleEndnoteColumn && boxLeft != null ? boxLeft : (tc && Number.isFinite(tc.x) ? tc.x : null);
+        const colW = isSingleEndnoteColumn && boxLeft != null && boxRight != null
+          ? boxRight - boxLeft : (tc && Number.isFinite(tc.w) ? tc.w : null);
+        const contentOffset = page.type === 'endnotes' ? (page.titleBandPx || 0) : spanHeight;
+        const yTop = boxTop != null ? boxTop + contentOffset : null;
         const colH = boxBottom != null && yTop != null ? Math.max(0, boxBottom - yTop) : null;
         addElement(elements, {
           elementId: columnId,
@@ -338,9 +340,13 @@ function createStepAuditModelAdapter(options = {}) {
             const h = Number(note.heightPx) || pitch;
             const tokenId = note.tokenId != null ? String(note.tokenId) : null;
             const noteIndex = Number.isInteger(note.noteIndex) ? note.noteIndex : null;
-            const objectId = objectIdOf(note, 'footnote-fragment');
+            const stableNoteKey = tokenId && noteIndex != null
+              ? [tokenId, noteIndex, note.part || '', note.mode || '', note.continuationOf || '', note.isContinuation ? 'continuation' : 'base'].join(':')
+              : null;
+            const objectId = stableNoteKey || objectIdOf(note, 'footnote-fragment');
+            if (!stableNoteKey) incomplete('footnote-fragment-without-stable-source-id');
             addElement(elements, {
-              elementId: 'footnote-fragment:' + pageId + ':' + objectId,
+              elementId: 'footnote-fragment:' + objectId,
               role: 'footnote-fragment',
               parentId: tokenId ? 'note:' + tokenId + ':' + (noteIndex == null ? 'unknown' : noteIndex) : 'footnote-area:' + pageId,
               tokenId,
@@ -374,6 +380,7 @@ function createStepAuditModelAdapter(options = {}) {
       for (const note of page.sideNotes || []) {
         const tokenId = note.ownToken != null ? String(note.ownToken) : (note.anchorToken != null ? String(note.anchorToken) : null);
         const objectId = tokenId ? null : objectIdOf(note, 'side-note');
+        if (!tokenId) incomplete('side-note-without-stable-source-id');
         const elementId = tokenId ? 'side-note:' + tokenId : 'side-note-object:' + objectId;
         if (note.yTop == null || note.x == null || note.colWidth == null || note.heightPx == null) {
           incomplete('side-note-placement-missing');
@@ -396,6 +403,7 @@ function createStepAuditModelAdapter(options = {}) {
         const slot = decoration.slot || decoration.kind || 'decoration';
         const stable = decoration.rollbackKey || decoration.tokenId || null;
         const objectId = stable ? null : objectIdOf(decoration, 'decoration');
+        if (!stable) incomplete('decoration-without-stable-source-id');
         const elementId = 'decoration:' + pageId + ':' + slot + ':' + (stable || objectId);
         addElement(elements, {
           elementId,
@@ -413,7 +421,7 @@ function createStepAuditModelAdapter(options = {}) {
       // page element and must appear in the inventory/delta.
       if (settings && typeof settings === 'object'
         && settings['column-divider-style'] && settings['column-divider-style'] !== 'none'
-        && templateCols.length >= 2) {
+        && templateCols.length >= 2 && page.type !== 'endnotes') {
         // Match geometry-projector/renderColumnDivider exactly, including AQ stretch.
         const used = cols.map((column) => column.reduce((sum, line) =>
           sum + (line.heightPx || 0) * (line.aqStretch || 1), 0));
@@ -448,11 +456,13 @@ function createStepAuditModelAdapter(options = {}) {
             const h = Number(note.heightPx) || null;
             const tokenId = note.tokenId != null ? String(note.tokenId) : null;
             const noteIndex = Number.isInteger(note.noteIndex) ? note.noteIndex : null;
-            const objectId = objectIdOf(note, 'endnote-fragment');
+            const stableNoteKey = tokenId && noteIndex != null ? [tokenId, noteIndex, note.part || ''].join(':') : null;
+            const objectId = stableNoteKey || objectIdOf(note, 'endnote-fragment');
+            if (!stableNoteKey) incomplete('endnote-fragment-without-stable-source-id');
             addElement(elements, {
-              elementId: 'endnote-fragment:' + pageId + ':' + objectId,
+              elementId: 'endnote-fragment:' + objectId,
               role: 'endnote-fragment',
-              parentId: tokenId ? 'endnote:' + tokenId + ':' + (noteIndex == null ? 'unknown' : noteIndex) : pageId,
+              parentId: tokenId ? 'endnote:' + tokenId + ':' + (noteIndex == null ? 'unknown' : noteIndex) : 'column:' + pageId + ':' + ci,
               tokenId,
               geometry: tc && tc.x != null && tc.w != null && y != null && h != null
                 ? { x: tc.x, y, w: tc.w, h } : null,
@@ -496,22 +506,39 @@ function createStepAuditModelAdapter(options = {}) {
       }
       if (page.toc && Array.isArray(page.toc.rows)) {
         page.toc.rows.forEach((row, rowIndex) => {
-          const members = row.kind === 'group' ? (row.items || []) : [row];
-          const tokenIds = members.map((item) => item.tokenId).filter((x) => x != null).map(String);
-          const anchor = tokenIds.length ? tokenIds.join('+') : 'row-' + rowIndex;
           const y = 70 + rowIndex * 24;
-          addElement(elements, {
-            elementId: 'toc-row:' + pageId + ':' + anchor,
-            role: row.kind === 'group' ? 'toc-group-row' : 'toc-row',
-            parentId: pageId,
-            geometry: { x: 18, y, w: Math.max(0, (pageWidth || 0) - 36), h: 24 },
-            attributes: { tokenIds, levels: members.map((item) => item.level).filter((x) => x != null), rowIndex, labels: members.map((item) => item.label || '') },
-            style: {},
-            textDigest: digestText(members.map((item) => item.text || '').join(' | '))
-          });
+          if (row.kind === 'group') {
+            (row.items || []).forEach((item, itemIndex) => {
+              const tokenId = item.tokenId != null ? String(item.tokenId) : null;
+              if (!tokenId) incomplete('toc-group-item-without-heading-token');
+              const x = 18 + itemIndex * 80;
+              addElement(elements, {
+                elementId: 'toc-group-item:' + pageId + ':' + (tokenId || ('row-' + rowIndex + '-item-' + itemIndex)),
+                role: 'toc-group-item',
+                parentId: 'toc-row:' + pageId + ':' + rowIndex,
+                tokenId,
+                geometry: { x, y, w: 60, h: 24 },
+                attributes: { level: item.level == null ? null : item.level, rowIndex, itemIndex, label: item.label || '' },
+                style: {},
+                textDigest: digestText([item.text || '', item.label || ''].filter(Boolean).join(' '))
+              });
+            });
+          } else {
+            const tokenId = row.tokenId != null ? String(row.tokenId) : null;
+            if (!tokenId) incomplete('toc-row-without-heading-token');
+            addElement(elements, {
+              elementId: 'toc-row:' + pageId + ':' + (tokenId || ('row-' + rowIndex)),
+              role: 'toc-row',
+              parentId: pageId,
+              tokenId,
+              geometry: { x: 18, y, w: Math.max(0, (pageWidth || 0) - 36), h: 24 },
+              attributes: { level: row.level == null ? null : row.level, rowIndex, label: row.label || '' },
+              style: {},
+              textDigest: digestText([row.text || '', row.label || ''].filter(Boolean).join(' '))
+            });
+          }
         });
       }
-
       // Custom pages are fixed-position boxes/images with source definition ID.
       if (page.custom) {
         if (page.custom.background) addElement(elements, {
@@ -558,9 +585,8 @@ function createStepAuditModelAdapter(options = {}) {
         const header = projection.header;
         const headerSlots = (header.slots || []).filter((slot) =>
           Number.isFinite(slot.x) && Number.isFinite(slot.w) && Number.isFinite(header.y));
-        const headerBox = headerSlots.length ? unionGeometry(headerSlots.map((slot) => ({
-          geometry: { x: slot.x, y: header.y, w: slot.w, h: 15 }
-        }))) : null;
+        const headerBox = null;
+        if (headerSlots.length) incomplete('header-line-box-height-not-explicit');
         addElement(elements, {
           elementId: 'running-header:' + pageId,
           role: 'running-header',
@@ -575,9 +601,8 @@ function createStepAuditModelAdapter(options = {}) {
             elementId: 'header-slot:' + pageId + ':' + slot.pos,
             role: 'header-slot',
             parentId: 'running-header:' + pageId,
-            geometry: Number.isFinite(slot.x) && Number.isFinite(header.y) && Number.isFinite(slot.w)
-              ? { x: slot.x, y: header.y, w: slot.w, h: 15 } : null,
-            attributes: { pos: slot.pos, align: slot.align || null, sizePt: slot.sizePt || null },
+            geometry: null,
+            attributes: { pos: slot.pos, align: slot.align || null, sizePt: slot.sizePt || null, x: slot.x, y: header.y, w: slot.w },
             style: {},
             textDigest: digestText(slot.text || '')
           });
@@ -685,14 +710,19 @@ function createStepAuditModelAdapter(options = {}) {
       if (page.type === 'custom' && !page.custom) incomplete('custom-page-model-missing');
       if (page.type === 'endnotes' && !Array.isArray(page.columns)) incomplete('endnote-columns-missing');
 
-      const evaluatedKinds = input.evaluatedKindsByPage
-        ? (input.evaluatedKindsByPage[pageId] || input.evaluatedKindsByPage[String(page.index)] || [])
-        : [];
-      if (!Array.isArray(evaluatedKinds)) incomplete('invalid-evaluated-kinds');
-      else if (!input.evaluatedKindsByPage) {
-        // We do not infer "clean" from absence in the Ledger.
-        incomplete('evaluated-kinds-not-supplied');
+      let evaluatedKinds;
+      let hasEvaluationEntry = false;
+      const evaluationMap = input.evaluatedKindsByPage;
+      if (evaluationMap instanceof Map) {
+        if (evaluationMap.has(pageId)) { evaluatedKinds = evaluationMap.get(pageId); hasEvaluationEntry = true; }
+        else if (evaluationMap.has(String(page.index))) { evaluatedKinds = evaluationMap.get(String(page.index)); hasEvaluationEntry = true; }
+        else if (evaluationMap.has(page.index)) { evaluatedKinds = evaluationMap.get(page.index); hasEvaluationEntry = true; }
+      } else if (evaluationMap && typeof evaluationMap === 'object') {
+        if (Object.prototype.hasOwnProperty.call(evaluationMap, pageId)) { evaluatedKinds = evaluationMap[pageId]; hasEvaluationEntry = true; }
+        else if (Object.prototype.hasOwnProperty.call(evaluationMap, String(page.index))) { evaluatedKinds = evaluationMap[String(page.index)]; hasEvaluationEntry = true; }
       }
+      if (!hasEvaluationEntry) incomplete('evaluated-kinds-not-supplied-for-page');
+      else if (!Array.isArray(evaluatedKinds)) incomplete('invalid-evaluated-kinds');
       const normalizedEvaluatedKinds = Array.isArray(evaluatedKinds) ? evaluatedKinds.slice() : [];
 
       const pageRow = {
@@ -766,7 +796,19 @@ function createStepAuditModelAdapter(options = {}) {
         else if (targetSeq != null) candidates = elems.filter((el) => el.elementId === 'line-seq-' + targetSeq);
         else if (tokenId) candidates = elems.filter((el) => el.elementId === 'block-fragment:' + resolvedPageId + ':' + tokenId);
         else if (parsedPage && parsedPage.columnIndex != null) candidates = elems.filter((el) => el.elementId === 'column:' + resolvedPageId + ':' + parsedPage.columnIndex);
-        else candidates = elems.filter((el) => el.elementId === 'page-flow:' + resolvedPageId);
+        else if (parsedPage) candidates = elems.filter((el) => el.elementId === 'page-flow:' + resolvedPageId);
+        else candidates = [];
+      } else if (targetSeq != null) {
+        candidates = pageRows.flatMap((row) => (row.elements || [])
+          .filter((el) => el.elementId === 'line-seq-' + targetSeq)
+          .map((el) => ({ pageId: row.pageId, element: el })));
+        if (candidates.length === 1) {
+          resolvedPageId = candidates[0].pageId;
+          resolvedTargetId = candidates[0].element.elementId;
+          candidates = [candidates[0].element];
+        } else if (candidates.length > 1) {
+          mapReason = 'sequence-matches-multiple-pages';
+        }
       } else if (tokenId) {
         candidates = pageRows.flatMap((row) => (row.elements || [])
           .filter((el) => el.elementId === 'block-fragment:' + row.pageId + ':' + tokenId)

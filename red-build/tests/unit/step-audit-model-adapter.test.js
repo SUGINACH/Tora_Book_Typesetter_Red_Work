@@ -34,7 +34,7 @@ describe('StepAudit RED model adapter', () => {
     const pageB = makePage(1, [[], []]);
     const first = adapter.snapshot({
       pages: [pageA, pageB], stage: 'page-plan', checkpointId: 'cp1', seq: 1,
-      settings: {}, evaluatedKindsByPage: {}
+      settings: {}, evaluatedKindsByPage: { 'page-object-1': [], 'page-object-2': [] }
     });
 
     pageA.index = 1;
@@ -43,7 +43,7 @@ describe('StepAudit RED model adapter', () => {
     pageB.columns[0] = [line(10, 't1', 'אחד שני')];
     const second = adapter.snapshot({
       pages: [pageB, pageA], stage: 'refit', checkpointId: 'cp2', seq: 2,
-      settings: {}, evaluatedKindsByPage: {}
+      settings: {}, evaluatedKindsByPage: { 'page-object-1': [], 'page-object-2': [] }
     });
 
     const firstPageIds = new Set(first.checkpoint.pages.map((p) => p.pageId));
@@ -87,14 +87,14 @@ describe('StepAudit RED model adapter', () => {
     });
     assertEq(snap.issues[0].mapStatus, 'unmapped');
     assertEq(snap.issues[0].mapReason, 'no-stable-page-or-element-match');
-    assert(snap.capture.reasons.includes('evaluated-kinds-not-supplied'));
+    assert(snap.capture.reasons.includes('evaluated-kinds-not-supplied-for-page'));
   });
 
   it('includes footnotes, side notes, ornaments and divider geometry in the page inventory', () => {
     const adapter = createStepAuditModelAdapter();
     const footnote = { tokenId: 't3', noteIndex: 0, marker: '*', text: 'ביאור', heightPx: 32, lineH: 16 };
     const sideNote = { ownToken: 't4', anchorToken: 't5', text: 'צד', x: 745, yTop: 90, colWidth: 45, heightPx: 30 };
-    const ornament = { kind: 'h2-ornament', slot: 'h2-top', kindStyle: 'plain', x: 100, y: 40, w: 20, h: 10 };
+    const ornament = { kind: 'h2-ornament', slot: 'h2-top', kindStyle: 'plain', rollbackKey: 'h2-top:t1', x: 100, y: 40, w: 20, h: 10 };
     const page = makePage(0, [
       [line(1, 't1', 'גוף')], [line(2, 't2', 'גוף נוסף')]
     ], {
@@ -104,7 +104,7 @@ describe('StepAudit RED model adapter', () => {
     const snap = adapter.snapshot({
       pages: [page], stage: 'page-plan', checkpointId: 'cp1', seq: 1,
       settings: { 'footnote-columns': 1, 'footnote-separator-rule': 'regular', 'column-divider-style': 'thin', 'body-font-size-pt': 12 },
-      evaluatedKindsByPage: {}
+      evaluatedKindsByPage: { 'page-object-1': [] }
     });
     const roles = snap.checkpoint.pages[0].elements.map((e) => e.role);
     assert(roles.includes('footnote-area'));
@@ -148,6 +148,61 @@ describe('StepAudit RED model adapter', () => {
     });
     assertEq(snap.issues[0].mapStatus, 'unmapped');
     assertEq(snap.issues[0].mapReason, 'page-index-map-changed-within-stage');
+  });
+
+  it('accepts an explicit Map of evaluated kinds and rejects a missing page entry', () => {
+    const adapter = createStepAuditModelAdapter();
+    const page = makePage(0, [[], []]);
+    const missing = adapter.snapshot({ pages: [page], stage: 'measure', seq: 1, settings: {}, evaluatedKindsByPage: new Map() });
+    assert(missing.capture.reasons.includes('evaluated-kinds-not-supplied-for-page'));
+    const complete = adapter.snapshot({ pages: [page], stage: 'balance', seq: 2, settings: {}, evaluatedKindsByPage: new Map([['page-object-1', []]]) });
+    assert(!complete.capture.reasons.includes('evaluated-kinds-not-supplied-for-page'));
+  });
+
+  it('does not map an opaque parenthetical target to page-flow', () => {
+    const adapter = createStepAuditModelAdapter();
+    const page = makePage(0, [[line(1, 't1', 'טקסט')], []]);
+    const ledger = { issues: new Map([['paren', {
+      issue_id: 'paren', kind: 'paren-cross-boundary', target: 'paren@span-1', page: 0,
+      first_seen_stage: 'protections', status: 'persists', transitions: [], candidates: []
+    }]]) };
+    const snap = adapter.snapshot({
+      pages: [page], ledger, stage: 'protections', seq: 1, settings: {},
+      evaluatedKindsByPage: { 'page-object-1': ['paren-cross-boundary'] }
+    });
+    assertEq(snap.issues[0].mapStatus, 'unmapped');
+    assertEq(snap.issues[0].targetElementId, null);
+  });
+
+  it('maps a globally unique line sequence when a page-index map is unavailable', () => {
+    const adapter = createStepAuditModelAdapter();
+    const page = makePage(0, [[line(77, 't77', 'שורה')], []]);
+    const ledger = { issues: new Map([['reading', {
+      issue_id: 'reading', kind: 'reading-order-break', target: 'page#99@seq77', page: 99,
+      first_seen_stage: 'unknown-stage', status: 'persists', transitions: [], candidates: []
+    }]]) };
+    const snap = adapter.snapshot({
+      pages: [page], ledger, stage: 'render', seq: 9, settings: {},
+      evaluatedKindsByPage: { 'page-object-1': ['reading-order-break'] }
+    });
+    assertEq(snap.issues[0].mapStatus, 'mapped');
+    assertEq(snap.issues[0].targetElementId, 'line-seq-77');
+    assertEq(snap.issues[0].pageId, 'page-object-1');
+  });
+
+  it('marks note/decoration object-only identities incomplete', () => {
+    const adapter = createStepAuditModelAdapter();
+    const page = makePage(0, [[], []], {
+      footnotes: [{ marker: '*', text: 'ללא מקור', heightPx: 18 }],
+      decorations: [{ kind: 'ornament', slot: 'h2-top', x: 10, y: 10, w: 20, h: 10 }]
+    });
+    const snap = adapter.snapshot({
+      pages: [page], stage: 'measure', seq: 1, settings: {},
+      evaluatedKindsByPage: { 'page-object-1': [] }
+    });
+    assertEq(snap.capture.complete, false);
+    assert(snap.capture.reasons.includes('footnote-fragment-without-stable-source-id'));
+    assert(snap.capture.reasons.includes('decoration-without-stable-source-id'));
   });
 
   it('records a header separator as an explicit incomplete model element rather than inventing its rectangle', () => {
