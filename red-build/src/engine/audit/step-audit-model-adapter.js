@@ -55,7 +55,9 @@ function targetToken(target) {
 }
 
 function parenRangeTarget(target) {
-  return typeof target === 'string' && /^p\d+@t\d+$/.test(target) ? target : null;
+  if (typeof target !== 'string') return null;
+  const match = target.match(/^paren@(p\d+@t\d+)$/);
+  return match ? match[1] : null;
 }
 
 function targetSequence(target) {

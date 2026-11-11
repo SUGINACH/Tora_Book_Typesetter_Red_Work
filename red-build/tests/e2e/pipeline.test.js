@@ -72,7 +72,7 @@ describe('e2e-pipeline', () => {
       'long parenthetical range must cross a column or page boundary');
     const issues = [...result.ledger.issues.values()].filter((issue) => issue.kind === 'paren-cross-boundary');
     assert(issues.length > 0, 'post-scope-map parenthesis predicate must create a ledger issue');
-    assert(issues.some((issue) => ranges.some((range) => issue.target === range.id)),
+    assert(issues.some((issue) => ranges.some((range) => issue.target === 'paren@' + range.id)),
       'ledger target must identify the mapped semantic parenthesis range');
   });
 

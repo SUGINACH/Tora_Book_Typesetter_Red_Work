@@ -233,7 +233,7 @@ describe('StepAudit RED model adapter', () => {
     });
     const pageB = makePage(1, [[], [line(2, 't7', 'סוף סוגר')]], { parenRanges: [] });
     const ledger = { issues: new Map([['paren', {
-      issue_id: 'paren', kind: 'paren-cross-boundary', target: 'p1@t7', page: 0,
+      issue_id: 'paren', kind: 'paren-cross-boundary', target: 'paren@p1@t7', page: 0,
       first_seen_stage: 'protections', status: 'persists', transitions: [], candidates: []
     }]]) };
     const snap = adapter.snapshot({
