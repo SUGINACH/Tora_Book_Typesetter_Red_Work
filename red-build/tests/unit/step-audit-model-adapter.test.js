@@ -240,7 +240,8 @@ describe('StepAudit RED model adapter', () => {
     const endnote = snap.checkpoint.pages[0].elements.find((element) => element.role === 'endnote-fragment');
     assertEq(column.geometry, { x: 50, y: 120, w: 700, h: 880 });
     assertEq(endnote.geometry, { x: 50, y: 120, w: 700, h: 44 });
-    assertEq(endnote.parentId, 'column:page-object-1:0');
+    assertEq(endnote.parentId, 'endnote:t88:2');
+    assertEq(endnote.columnId, 'column:page-object-1:0');
   });
 
   it('projects TOC group members as separate row geometries', () => {

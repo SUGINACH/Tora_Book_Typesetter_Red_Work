@@ -350,6 +350,7 @@ function createStepAuditModelAdapter(options = {}) {
               role: 'footnote-fragment',
               parentId: tokenId ? 'note:' + tokenId + ':' + (noteIndex == null ? 'unknown' : noteIndex) : 'footnote-area:' + pageId,
               tokenId,
+              columnId: 'footnote-lane:' + pageId + ':' + li,
               fragmentId: objectId,
               geometry: { x: laneX[li], y, w: laneW, h },
               attributes: {
@@ -464,6 +465,7 @@ function createStepAuditModelAdapter(options = {}) {
               role: 'endnote-fragment',
               parentId: tokenId ? 'endnote:' + tokenId + ':' + (noteIndex == null ? 'unknown' : noteIndex) : 'column:' + pageId + ':' + ci,
               tokenId,
+              columnId: 'column:' + pageId + ':' + ci,
               geometry: tc && tc.x != null && tc.w != null && y != null && h != null
                 ? { x: tc.x, y, w: tc.w, h } : null,
               attributes: { marker: note.marker || null, noteIndex, columnIndex: ci, part: note.part || null },
