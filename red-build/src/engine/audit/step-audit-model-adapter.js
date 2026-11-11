@@ -81,6 +81,7 @@ function createStepAuditModelAdapter(options = {}) {
   let nextPageId = 0;
   let nextObjectId = 0;
   const pageIndexMaps = new Map();
+  const ambiguousPageIndexStages = new Set();
 
   function pageIdOf(page) {
     if (!page || typeof page !== 'object') return null;
@@ -159,7 +160,7 @@ function createStepAuditModelAdapter(options = {}) {
         },
         textDigest: digestText(text)
       });
-      return { elementId, tokenId, seq, geometry, text, role };
+      return { elementId, tokenId, seq, geometry, text, role, part: line && line.meta && line.meta.part || null };
     }
 
     pages.forEach((page, pageArrayIndex) => {
@@ -247,13 +248,17 @@ function createStepAuditModelAdapter(options = {}) {
           textDigest: digestText('')
         });
         let y = yTop;
-        for (const line of column || []) {
-          const h = (line.heightPx || 0) * (line.aqStretch || 1);
-          const row = addLine(elements, pageId, line,
-            colX != null && colW != null && y != null ? { x: colX, y, w: colW, h } : null,
-            columnId, 'column:' + pageId + ':' + ci);
-          lineRows.push(row);
-          y += h;
+        // Endnote columns contain note records, not line records; they are
+        // projected separately below and must not be double-counted as body lines.
+        if (page.type !== 'endnotes') {
+          for (const line of column || []) {
+            const h = (line.heightPx || 0) * (line.aqStretch || 1);
+            const row = addLine(elements, pageId, line,
+              colX != null && colW != null && y != null ? { x: colX, y, w: colW, h } : null,
+              columnId, 'column:' + pageId + ':' + ci);
+            lineRows.push(row);
+            y += h;
+          }
         }
       });
 
@@ -281,7 +286,7 @@ function createStepAuditModelAdapter(options = {}) {
           attributes: {
             lineCount: rows.length,
             lineSeqs: rows.map((row) => row.seq).filter((n) => n != null),
-            parts: [...new Set(rows.map((row) => row.tokenId ? null : null))]
+            parts: [...new Set(rows.map((row) => row.part).filter(Boolean))]
           },
           style: {},
           textDigest: digestText(body)
@@ -406,17 +411,26 @@ function createStepAuditModelAdapter(options = {}) {
 
       // The column divider is a geometry-neutral overlay, but it is still a
       // page element and must appear in the inventory/delta.
-      if (settings && typeof settings === 'object') {
-        const divider = columnDividerGeometry(page, settings);
-        if (divider) addElement(elements, {
-          elementId: 'column-divider:' + pageId,
-          role: 'divider',
-          parentId: pageId,
-          geometry: { x: divider.x, y: divider.y, w: divider.w, h: divider.h },
-          attributes: { style: divider.style },
-          style: {},
-          textDigest: digestText('')
-        });
+      if (settings && typeof settings === 'object'
+        && settings['column-divider-style'] && settings['column-divider-style'] !== 'none'
+        && templateCols.length >= 2) {
+        // Match geometry-projector/renderColumnDivider exactly, including AQ stretch.
+        const used = cols.map((column) => column.reduce((sum, line) =>
+          sum + (line.heightPx || 0) * (line.aqStretch || 1), 0));
+        const h = Math.max(0, Math.min(...used) - 8);
+        if (h > 0) {
+          const c1 = templateCols[1];
+          const x = c1.x + c1.w + (tpl.gutter || 0) / 2;
+          addElement(elements, {
+            elementId: 'column-divider:' + pageId,
+            role: 'divider',
+            parentId: pageId,
+            geometry: { x, y: boxTop, w: 1, h },
+            attributes: { style: settings['column-divider-style'] },
+            style: {},
+            textDigest: digestText('')
+          });
+        }
       }
 
       // Endnote pages store note objects, not body lines. Use the exact model
@@ -451,11 +465,14 @@ function createStepAuditModelAdapter(options = {}) {
           }
         }
         if (page.heading && boxTop != null) {
+          const titleBand = Number(page.titleBandPx);
+          const titleHeight = Number.isFinite(titleBand) && titleBand > 16 ? titleBand - 16 : null;
+          if (titleHeight == null) incomplete('endnote-title-height-not-explicit');
           addElement(elements, {
             elementId: 'endnote-title:' + pageId,
             role: 'heading',
             parentId: pageId,
-            geometry: { x: boxLeft, y: boxTop, w: (boxRight || 0) - (boxLeft || 0), h: page.titleBandPx || 0 },
+            geometry: titleHeight != null ? { x: boxLeft, y: boxTop + 8, w: (boxRight || 0) - (boxLeft || 0), h: titleHeight } : null,
             attributes: { text: page.heading },
             style: {},
             textDigest: digestText(page.heading)
@@ -465,6 +482,18 @@ function createStepAuditModelAdapter(options = {}) {
 
       // TOC rows have stable source heading token anchors. Group rows use their
       // member token IDs; row ordinal is only a tie-breaker inside this page.
+      if (page.toc && page.toc.title) {
+        addElement(elements, {
+          elementId: 'toc-title:' + pageId,
+          role: 'heading',
+          parentId: pageId,
+          geometry: null,
+          attributes: { text: page.toc.title, geometrySource: 'TOC title placement is CSS/render-flow, not explicit in page model' },
+          style: {},
+          textDigest: digestText(page.toc.title)
+        });
+        incomplete('toc-title-geometry-not-modelled');
+      }
       if (page.toc && Array.isArray(page.toc.rows)) {
         page.toc.rows.forEach((row, rowIndex) => {
           const members = row.kind === 'group' ? (row.items || []) : [row];
@@ -485,6 +514,15 @@ function createStepAuditModelAdapter(options = {}) {
 
       // Custom pages are fixed-position boxes/images with source definition ID.
       if (page.custom) {
+        if (page.custom.background) addElement(elements, {
+          elementId: 'custom-background:' + (page.custom.customId || pageId),
+          role: 'page-background',
+          parentId: pageId,
+          geometry: pageWidth != null && pageHeight != null ? { x: 0, y: 0, w: pageWidth, h: pageHeight } : null,
+          attributes: { background: page.custom.background },
+          style: { background: page.custom.background },
+          textDigest: digestText(page.custom.background)
+        });
         for (let i = 0; i < (page.custom.boxes || []).length; i++) {
           const boxModel = page.custom.boxes[i];
           addElement(elements, {
@@ -518,12 +556,16 @@ function createStepAuditModelAdapter(options = {}) {
         : (typeof options.projectPage === 'function' ? options.projectPage(page, settings) : null);
       if (projection && projection.header) {
         const header = projection.header;
+        const headerSlots = (header.slots || []).filter((slot) =>
+          Number.isFinite(slot.x) && Number.isFinite(slot.w) && Number.isFinite(header.y));
+        const headerBox = headerSlots.length ? unionGeometry(headerSlots.map((slot) => ({
+          geometry: { x: slot.x, y: header.y, w: slot.w, h: 15 }
+        }))) : null;
         addElement(elements, {
           elementId: 'running-header:' + pageId,
           role: 'running-header',
           parentId: pageId,
-          geometry: Number.isFinite(header.y) && Number.isFinite(pageWidth)
-            ? { x: 0, y: header.y, w: pageWidth, h: null } : null,
+          geometry: headerBox,
           attributes: { separator: page.header && page.header.separator || 'none' },
           style: {},
           textDigest: digestText((header.slots || []).map((s) => s.text || '').join('|'))
@@ -534,7 +576,7 @@ function createStepAuditModelAdapter(options = {}) {
             role: 'header-slot',
             parentId: 'running-header:' + pageId,
             geometry: Number.isFinite(slot.x) && Number.isFinite(header.y) && Number.isFinite(slot.w)
-              ? { x: slot.x, y: header.y, w: slot.w, h: null } : null,
+              ? { x: slot.x, y: header.y, w: slot.w, h: 15 } : null,
             attributes: { pos: slot.pos, align: slot.align || null, sizePt: slot.sizePt || null },
             style: {},
             textDigest: digestText(slot.text || '')
@@ -563,6 +605,18 @@ function createStepAuditModelAdapter(options = {}) {
           textDigest: digestText(Object.values(page.header.slots || {}).map((s) => s && s.text || '').join('|'))
         });
         incomplete('header-projection-not-supplied');
+      }
+      if (page.header && page.header.separator && page.header.separator !== 'none' && !(projection && projection.header)) {
+        addElement(elements, {
+          elementId: 'header-separator:' + pageId,
+          role: 'divider',
+          parentId: 'running-header:' + pageId,
+          geometry: null,
+          attributes: { style: page.header.separator, geometrySource: 'CSS head--sep-* (not separately projected)' },
+          style: {},
+          textDigest: digestText('')
+        });
+        incomplete('header-separator-rect-not-present-in-model');
       }
       if (projection && projection.folio) {
         addElement(elements, {
@@ -593,6 +647,19 @@ function createStepAuditModelAdapter(options = {}) {
           .filter((line) => line.kind === 'shaar-content');
         if (!projection) incomplete('shaar-projection-not-supplied');
         const grouped = new Map();
+        const shaarModel = require('../output/shaar-content').buildShaarBlocks(page, settings, page._metadata);
+        if (shaarModel && shaarModel.blocks.some((block) => block.graphic)) {
+          addElement(elements, {
+            elementId: 'shaar-graphic:' + pageId,
+            role: 'ornament',
+            parentId: pageId,
+            geometry: null,
+            attributes: { graphic: shaarModel.blocks.filter((block) => block.graphic).map((block) => block.graphic) },
+            style: {},
+            textDigest: digestText('')
+          });
+          incomplete('shaar-graphic-geometry-not-modelled');
+        }
         for (const line of shaarLines) {
           const cls = line.cls || 'shaar-content';
           const list = grouped.get(cls) || [];
@@ -653,7 +720,17 @@ function createStepAuditModelAdapter(options = {}) {
 
     const indexMap = new Map();
     for (const row of pageRows) if (row.pageIndex != null) indexMap.set(row.pageIndex, row.pageId);
-    if (input.stage) pageIndexMaps.set(String(input.stage), indexMap);
+    if (input.stage) {
+      const stage = String(input.stage);
+      if (!pageIndexMaps.has(stage)) pageIndexMaps.set(stage, indexMap);
+      else {
+        const previous = pageIndexMaps.get(stage);
+        const keys = new Set([...previous.keys(), ...indexMap.keys()]);
+        if ([...keys].some((key) => previous.get(key) !== indexMap.get(key))) {
+          ambiguousPageIndexStages.add(stage);
+        }
+      }
+    }
 
     const issueList = ledgerIssuesOf(input.ledger);
     const normalizedIssues = [];
@@ -663,16 +740,22 @@ function createStepAuditModelAdapter(options = {}) {
       let resolvedTargetId = typeof issue.targetElementId === 'string' ? issue.targetElementId : null;
       let mapReason = null;
 
-      const byPageIndex = issue.first_seen_stage && pageIndexMaps.has(String(issue.first_seen_stage))
-        ? pageIndexMaps.get(String(issue.first_seen_stage)).get(Number(issue.page))
+      const issueStage = issue.first_seen_stage ? String(issue.first_seen_stage) : null;
+      const stageMapIsAmbiguous = !!issueStage && ambiguousPageIndexStages.has(issueStage);
+      const byPageIndex = issueStage && !stageMapIsAmbiguous && pageIndexMaps.has(issueStage)
+        ? pageIndexMaps.get(issueStage).get(Number(issue.page))
         : null;
+      if (stageMapIsAmbiguous) {
+        mapReason = 'page-index-map-changed-within-stage';
+      }
       const parsedPage = parsePageTarget(target);
       const targetSeq = targetSequence(target);
       const tokenId = targetToken(target);
 
       if (!resolvedPageId && byPageIndex) resolvedPageId = byPageIndex;
       if (!resolvedPageId && parsedPage) {
-        const map = issue.first_seen_stage && pageIndexMaps.get(String(issue.first_seen_stage));
+        const stageName = issue.first_seen_stage ? String(issue.first_seen_stage) : null;
+        const map = stageName && !ambiguousPageIndexStages.has(stageName) ? pageIndexMaps.get(stageName) : null;
         if (map) resolvedPageId = map.get(parsedPage.pageIndex) || null;
       }
 
@@ -697,7 +780,7 @@ function createStepAuditModelAdapter(options = {}) {
 
       if (!resolvedTargetId && candidates.length === 1) resolvedTargetId = candidates[0].elementId;
       if (!resolvedPageId || !resolvedTargetId || candidates.length !== 1) {
-        mapReason = candidates.length > 1 ? 'target-matches-multiple-elements' : 'no-stable-page-or-element-match';
+        mapReason = mapReason || (candidates.length > 1 ? 'target-matches-multiple-elements' : 'no-stable-page-or-element-match');
         capture.unmappedIssues.push({ issueId: issue.issue_id, kind: issue.kind, target, page: issue.page, reason: mapReason });
         capture.complete = false;
         capture.reasons.add('ledger-issue-unmapped');

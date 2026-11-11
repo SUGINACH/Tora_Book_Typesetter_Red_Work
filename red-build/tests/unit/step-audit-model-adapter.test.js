@@ -115,6 +115,41 @@ describe('StepAudit RED model adapter', () => {
     assertEq(snap.capture.complete, true);
   });
 
+  it('does not double-count endnote note records as body lines', () => {
+    const adapter = createStepAuditModelAdapter();
+    const note = { tokenId: 't31', noteIndex: 0, marker: '1', text: 'ביאור ארוך', heightPx: 44, colIdx: 0 };
+    const page = makePage(0, [[note], []], {
+      type: 'endnotes', isEndnotes: true, heading: 'הערות סיום', titleBandPx: 40,
+      columns: [[note], []], notes: [note]
+    });
+    const snap = adapter.snapshot({
+      pages: [page], stage: 'ledger-finalize', checkpointId: 'end1', seq: 4,
+      settings: {}, evaluatedKindsByPage: {}
+    });
+    const rows = snap.checkpoint.pages[0].elements;
+    assertEq(rows.filter((e) => e.role === 'body-line').length, 0);
+    assertEq(rows.filter((e) => e.role === 'endnote-fragment').length, 1);
+    assertEq(rows.filter((e) => e.elementId === 'line-object-line-1').length, 0);
+  });
+
+  it('treats a page-index map that changes within the same stage as ambiguous', () => {
+    const adapter = createStepAuditModelAdapter();
+    const pageA = makePage(0, [[], []]);
+    adapter.snapshot({ pages: [pageA], stage: 'protections', checkpointId: 'p1', seq: 1, settings: {} });
+    pageA.index = 1;
+    const pageB = makePage(0, [[], []]);
+    adapter.snapshot({ pages: [pageB, pageA], stage: 'protections', checkpointId: 'p2', seq: 2, settings: {} });
+    const ledger = { issues: new Map([['x', {
+      issue_id: 'x', kind: 'containment', target: 'page#0', page: 0,
+      first_seen_stage: 'protections', status: 'persists', transitions: [], candidates: []
+    }]]) };
+    const snap = adapter.snapshot({
+      pages: [pageB, pageA], ledger, stage: 'render', checkpointId: 'p3', seq: 3, settings: {}
+    });
+    assertEq(snap.issues[0].mapStatus, 'unmapped');
+    assertEq(snap.issues[0].mapReason, 'page-index-map-changed-within-stage');
+  });
+
   it('records a header separator as an explicit incomplete model element rather than inventing its rectangle', () => {
     const adapter = createStepAuditModelAdapter({
       projectPage: () => ({
