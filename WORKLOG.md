@@ -2920,3 +2920,40 @@ CI על commit `29f541e` הריץ את הסוויטה החדשה: שתי בדי�
 - No P6/P7 calculation, execution, report, line/word/paragraph comparison or task was performed or reintroduced.
 - No legacy renderer, layout harness, or archived trigger runner was executed.
 - These changes are documentation/index reconciliation plus a targeted test assertion correction. They do not alter layout output or active settings.
+
+
+## Session 11 — השלמת אימות CI ומיפוי כיסוי סמנטי (11.11.2026)
+
+### 1. אימות HEAD ו-PR
+
+ה-HEAD `0d8dae7b55d5cdf03686faf21cdaf026ef6bade9` אומת מול Actions. כל ארבעת ה-workflows הסתיימו בהצלחה:
+
+| Workflow | Run ID | Result |
+|---|---:|---|
+| CI | 42935729134 | success |
+| layout-invariants | 42935729131 | success |
+| rebuild-worker-bundles | 42935729276 | success |
+| full-math-audit | 42935729156 | success |
+
+PR #6 נשאר פתוח מול `main`, לא מוזג, ו-GitHub דיווח `mergeable=true`. לא בוצע מיזוג.
+
+### 2. מטריצת כיסוי סמנטי
+
+נוצר `spec/IMPORT_FIXTURE_SEMANTIC_COVERAGE.md`. המסמך ממפה:
+- את כל 11 קובצי React line-battery מול parser/typography/E2E של RED.
+- את עשרת Gold V21 trigger fixtures מול RED tests ומצבי D-100.
+- את ממדי סוויטת IMUD layout-scenarios מול בדיקות RED הקיימות.
+- את התאמת screenshot helper של Green, חוזי Yellow ו-step-by-step audit למבנה RED הנוכחי.
+
+המיפוי מפריד בין מנגנון שכבר נבדק לבין fixture מקור מדויק שלא נבדק. מועמדים לפער — BiDi מעורב, ניקוד/טעמים, מקפים, whitespace, page-underfill חיובי ו-sparse-line — מתועדים כפערי בדיקה אפשריים בלבד, לא כבאגי מנוע.
+
+### 3. חסמי ייבוא שנמצאו
+
+- Gold משתמש בכותרות `כותרת N מספר K - ...`; ה-lexer של RED מקבל `כותרת N - ...`. לכן יש ליצור נגזרת RED ולא להזין את המקור ישירות.
+- `test-all-triggers.txt` מכיל רצף של כותרות H3 מאותה רמה ללא טקסט גוף; יש לסווגו כמקור לא תקין לפי D-100.
+- ה-helper הישן ל-PDF מצילומי Green מצפה ל-manifest שאינו מיוצר ב-RED, כולל שדות schema אחרים והחרגות DOM קשיחות. אין להעתיקו לפני הגדרת producer/manifest של RED.
+- RED כבר כולל EventLog/Ledger/trace ו-`diagnostics-v2`; מיפוי Yellow ו-reducer ל-step-by-step audit צריכים להיבנות עליהם, לא כמערכת מקבילה.
+
+### 4. גבול השינויים
+
+במהלך Session 11 לא שונו parser, typography, planner, renderer, Worker או settings runtime. לא הורצו legacy harnesses ולא חוברו fixtures ארכיוניים ל-CI. השינויים הם מסמכי תכנון/כיסוי בלבד; המקורות הארכיוניים נשארו byte-identical.

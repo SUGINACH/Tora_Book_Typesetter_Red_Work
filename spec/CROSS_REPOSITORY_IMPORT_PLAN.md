@@ -70,13 +70,13 @@
 
 ## 5. סדר ההמשך
 
-1. להשלים את בדיקת ה-HEAD וה-artifacts של CI לאחר שינוי workflow, בלי להריץ את ההשוואה ההיסטורית.
-2. לבצע gap analysis כתוב ל-Gold step-by-step audit מול `red-build/src/engine/audit/**`, ה-EventLog, ה-Ledger וה-trace; לכל יכולת לסמן קיים/חסר/חלקי/לא רלוונטי.
-3. לבצע gap analysis ל-Yellow inputs/diagnostics ולמפות audit kinds מול ה-report schema וה-scanners של RED.
-4. אם קיים פער בדוח ממצאים חזותי, להגדיר screenshot manifest של RED; רק אז להתאים את כלי Green/Gold להפקת PDF, ללא החרגות עמודים קשיחות.
-5. ליצור adapter חדש למחולל test-triggers רק אם נדרש: לקרוא את הקורפוס הארכיוני, לבדוק D-100, לסווג תרחישים, ולהפיק fixtures נגזרים במיקום נפרד. אין לשנות את קובצי הארכיון.
-6. לבדוק את preset Makom Bina דרך משימת UI נפרדת: תצוגת מקור/גרסה, preview של 3 setting sets, ולחצן החלה מפורש. אין להפעילו כברירת מחדל.
-7. רק לאחר gap analysis ו-fixture שמוכיח חסר, לפתוח משימת מנוע ממוקדת. אין להעתיק פונקציות layout ממאגרים ישנים.
+1. **אימות CI — הושלם:** ב-HEAD `0d8dae7b55d5cdf03686faf21cdaf026ef6bade9` כל ארבעת ה-workflows הרלוונטיים הסתיימו בהצלחה. PR #6 נשאר פתוח ולא מוזג.
+2. **מטריצת כיסוי סמנטי — הושלמה בסבב ראשון:** `spec/IMPORT_FIXTURE_SEMANTIC_COVERAGE.md` ממפה את 11 קובצי React line-battery, עשרת Gold triggers וסוויטת IMUD מול בדיקות RED. מועמדי הפער מסומנים כמועמדים בלבד, לא כבאגים.
+3. **בדיקות RED-native ממוקדות:** לבדוק תחילה BiDi מעורב, ניקוד/טעמים, מקפים ורצפי whitespace; בנוסף לבדוק אם דרושות בדיקות חיוביות נפרדות ל-page-underfill ול-sparse-line. כל fixture ייכתב בתחביר RED ויעבור D-100. אין להריץ את קובצי המקור הישנים.
+4. **Step-by-step audit:** למפות את ה-EventLog/Ledger/trace הקיימים ולתכנן reducer טהור של snapshots/deltas. אין logger שני ואין DOM snapshot במסלול הרגיל.
+5. **Yellow/Gold diagnostic contracts:** להשלים השוואת schema שדה-מול-שדה. להוסיף רק שדות/מצבים חסרים שהוכחו, עם negative controls.
+6. **Screenshot report:** אין כרגע producer של screenshots/manifest ב-RED. תחילה יש להגדיר manifest ו-producer של RED; רק לאחר מכן לכתוב PDF builder מוגן ועצמאי.
+7. **מנוע:** לפתוח שינוי parser/layout/typography רק לאחר בדיקה RED-native שמוכיחה פער ומגדירה את תחום ההשפעה. אין להעתיק runtime ממאגרים אחרים.
 
 ## 6. תנאי השלמה של תוכנית הייבוא
 
@@ -93,7 +93,7 @@
 בהתאם להוראת המשתמש, `compare.py` ו-`extract-reference.py` נשארים כקוד/נתונים ארכיוניים בלבד. נקודות הכניסה שלהם חסומות. `verify-corpus.py` משתמש רק בפונקציות עזר טהורות מתוך `compare.py` לבדיקת ה-PDF הנוכחי של RED מול קלטו; אין בכך הפעלת P6/P7. אין להחזיר את ה-comparator ל-CI או ל-CLI. אם בעתיד תידרש הפרדת פונקציות העזר למודול משותף, יש לבצע זאת כשינוי תחזוקה נפרד ולשמור על בדיקות C1–C12.
 
 
-## 8. עדכון מצב מחייב לאחר הייבואים הנוספים — 10.11.2026
+## 8. עדכון מצב מחייב לאחר הייבואים הנוספים — 11.11.2026
 
 סעיפים 2–5 לעיל הם מפת הבסיס. הטבלה וההכרעות כאן מעדכנות אותן בכל מקום שבו נכתב בעבר שרכיב טרם הועבר או טרם נשמר.
 
@@ -116,6 +116,7 @@
 - הנתיב `reference-archive/cross-repo-2026-11-10/` מכיל **78 קובצי מקור ייחודיים**: 67 קובצי reference מהייבואים הקודמים, 8 קובצי סוויטת layout מ-IMUD main ו-3 מסמכים נוספים (React work-conventions, Typesetter_doc Session_handoff ו-Functional_gaps_analysis).
 - קיימים גם 9 עותקי נתיב כפולים עם Git blob זהה, מדריך מקומי אחד לסוויטת IMUD ו-README האינדקס; בסך הכול 89 קבצים בעץ הארכיון.
 - README הארכיון הוא אינדקס provenance ברמת קובץ: repository/ref, commit מקור, נתיב מקורי ו-Git blob ID. שלושת המקורות הנוספים אומתו מול ה-blob בקומיט המקור; תשעת העותקים הכפולים הושוו ל-blob של הקובץ הקנוני. אין להפוך אותם לקוד פעיל.
+- מטריצת הכיסוי הסמנטי של חומרי React/IMUD/Gold מול בדיקות RED מתועדת ב-`spec/IMPORT_FIXTURE_SEMANTIC_COVERAGE.md`; היא אינה מחברת את חומרי הארכיון ל-CI.
 - סוויטת IMUD: baseline הנעול מכיל **38 רשומות scenario**. ה-README המקורי אומר 21 — נתון stale ביחס ל-baseline בקומיט המקור הנעול. לא שינינו את המקור; תיעדנו את הסתירה ב-README הארכיוני.
 - הייבוא אינו מעיד שכל חמשת המאגרים ההיסטוריים הועברו בשלמותם. זהו ארכיון ממוקד של רכיבים, תיעוד, harnesses ו-fixtures שנבחרו; יתר הקבצים/היסטוריית הריפו לא הועתקו.
 
@@ -123,16 +124,15 @@
 
 - לא הועתקו קבצי archive אל `red-build/src/**`; לא נוספו tests או fixtures ארכיוניים ל-`npm test`, corpus manifest או GitHub Actions.
 - לא הורצו IMUD scenarios, Gold triggers, Yellow tests או Green helper מול RED.
-- שינויי ה-workflow והחסימה של CLI הייחוס קדמו לריצת CI המאומתת על commit `78a253191e586484f203695149fba2b29925f461`: CI, layout-invariants, rebuild-worker-bundles ו-full-math-audit הסתיימו בהצלחה (פרטים ב-WORKLOG). כל commits הארכיון/תיעוד שלאחר מכן אינם משנים runtime או workflow.
+- לאחר תיקון בדיקת ה-preset, ה-HEAD `0d8dae7b55d5cdf03686faf21cdaf026ef6bade9` עבר את ארבעת ה-workflows: CI (42935729134), layout-invariants (42935729131), rebuild-worker-bundles (42935729276) ו-full-math-audit (42935729156). ראה WORKLOG. PR #6 פתוח ולא מוזג.
 - אין להפעיל את הכלים הישנים כדי “לוודא” את הארכיון. הזהות אומתה ברמת Git blob.
 
 ### 8.4 סדר ההמשך המתוקן
 
-1. **Makom Bina v20.5 — הושלם מבחינת נגישות UI:** בדיקת הקוד הראתה שקבוצת ה-preset המבודדת וה-picker כבר קיימים ב-`imud-library.js` וב-`settings-panel.js`; הם מציגים מקור/גרסה, טוענים preview ומחילים רק בלחיצה מפורשת. ארבעת קובצי JSON ממלאים את הנתיבים הקיימים. נוספה בדיקת integration לטעינה, disposition ונתיבים; תיקון assertion לנתיב decoded נרשם ב-commit `31e7b4c`, ואימות CI ל-HEAD המתוקן נדרש לפני סימון הבדיקה כירוקה. אין שינוי default או החלפת הערכות הרגילות.
-2. **בחירת fixtures מ-IMUD line-battery ו-layout scenarios:** למפות כיסוי סמנטי מול בדיקות RED; לבחור רק מקרים חסרים, לבדוק D-100, וליצור קובצי RED-native חדשים. אין להריץ harness ישן ואין לשמר baseline page counts או line layouts כציפייה.
-3. **Gold trigger corpus:** לעבור על 10 הקבצים, לזהות תחביר ישן/מבנים לא תקינים, ולהפיק נגזרי RED רק אם הם עומדים ב-D-100 ומכסים דרישה שעדיין חסרה.
-4. **Screenshot report adapter:** להגדיר screenshot-manifest של RED ואז לכתוב adapter עצמאי. אין להשתמש בקובץ Green המקורי כ-runner פעיל.
-5. **Step-by-step audit:** לממש קודם reducer טהור של snapshots/deltas על מודל RED; רק אחר כך לשקול instrumentation opt-in. אין מערכת trace שנייה ואין snapshot DOM בכל שלב.
-6. **Yellow/Gold diagnostic contracts:** להוסיף רק שדות/מצבים שהוכחו כחסרים ב-EventLog/Ledger/report-schema, עם negative controls. לא להעתיק globals או tests ישנים.
-7. **Kotlin/Rust/React engines:** להשאיר ארכיטקטורה/ADR כחומר ביקורת. קוד runtime זר לא ייכנס ל-RED.
-8. **P6/P7:** אין שלב עתידי, אין משימת המרה ואין שימוש במדדים. ההשעיה מלאה.
+1. **Makom Bina v20.5 — הושלם ומאומת:** קבוצת preset מבודדת, picker, מקור/גרסה, preview והחלה מפורשת כבר קיימים. ארבעת קובצי הנתונים נטענים בנתיב הצפוי; בדיקת integration תוקנה ב-`31e7b4c`, וכל ארבעת ה-workflows עברו על HEAD `0d8dae7b`. לא שונתה ברירת מחדל או אחת משלוש הערכות הרגילות.
+2. **React/IMUD/Gold — סקר סמנטי ראשון הושלם:** ראו `spec/IMPORT_FIXTURE_SEMANTIC_COVERAGE.md`. הקבצים הישנים נשארים ארכיון; רק מועמדים לפער ייהפכו לנגזרות RED לאחר בדיקת תחביר ו-D-100.
+3. **Gold source syntax:** התחביר `כותרת N מספר K - ...` אינו מזוהה על ידי ה-lexer של RED, המקבל `כותרת N - ...`. בקובץ `test-all-triggers.txt` נמצא גם רצף כותרות H3 ללא גוף. לכן אין להריץ/לייבא את המקור ישירות.
+4. **Step-by-step audit:** נותר פער של snapshots/deltas מלאים של רכיבי העמוד והאחים בחלון issue-centric. להתחיל במיפוי שדות וב-reducer טהור על אירועי RED; אין ליצור trace שני.
+5. **Yellow diagnostics:** נותרה השוואת schema שדה-מול-שדה. מודולי המקור יישארו ארכיון עד שיוכח שדה חסר עם צורך ובדיקה.
+6. **Screenshot PDF:** ה-helper של Green אינו תואם ל-`diagnostics-v2`, כולל החרגות DOM קשיחות ומניח manifest שאינו נוצר כיום ב-RED. לא תיכתב שכבת PDF לפני producer/manifest של RED.
+7. **React/Kotlin/Rust:** תיעוד, ADRs וחוזי מקור נשמרו בארכיון; אין הצדקה להעתיק runtime זר לשפת/ארכיטקטורת RED.
