@@ -4009,24 +4009,25 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
           }
           if (cutIdx >= words.length) {
             // כל ההערה נכנסת בגבול התקרה — אין צורך בפיצול
-            cur.footnotes.push({ ...n, heightPx: h, mode: isCont ? 'split-rest' : 'normal', isContinuation: isCont });
+            cur.footnotes.push({ ...n, fragmentIndex: Number.isInteger(n.fragmentIndex) ? n.fragmentIndex : 0, heightPx: h, mode: isCont ? 'split-rest' : 'normal', isContinuation: isCont });
             continue;
           }
           const firstText = words.slice(0, cutIdx).join(' ');
           const restText = words.slice(cutIdx).join(' ');
-          cur.footnotes.push({ ...n, text: firstText, heightPx: linesFit * fnLH, lineH: fnLH, mode: 'split-first', linesShown: linesFit });
-          pendingBarNotes.push({ ...n, text: restText, isContinuation: true, continuationOf: n.tokenId, mode: 'split-rest' });
+          const fragmentIndex = Number.isInteger(n.fragmentIndex) ? n.fragmentIndex : 0;
+          cur.footnotes.push({ ...n, text: firstText, fragmentIndex, heightPx: linesFit * fnLH, lineH: fnLH, mode: 'split-first', linesShown: linesFit });
+          pendingBarNotes.push({ ...n, text: restText, fragmentIndex: fragmentIndex + 1, isContinuation: true, continuationOf: n.tokenId, mode: 'split-rest' });
           eventLog.emit('notes-budget', 'fn-split', { token: n.tokenId, marker: n.marker, barMax, firstWords: cutIdx }, cur.index);
           continue;
         }
         if (settings['long-footnote-policy'] === 'move-whole') {
-          pendingBarNotes.push({ ...n, mode: 'moved-whole', deferredToNextPage: true });
+          pendingBarNotes.push({ ...n, fragmentIndex: Number.isInteger(n.fragmentIndex) ? n.fragmentIndex : 0, mode: 'moved-whole', deferredToNextPage: true });
           eventLog.emit('notes-budget', 'fn-moved-whole', { token: n.tokenId, marker: n.marker }, cur.index);
           continue;
         }
         if (settings['long-footnote-policy'] === 'reject-to-body' && rejectToBody(n, `bar overflow ${h}>${barMax}`)) continue;
       }
-      cur.footnotes.push({ ...n, heightPx: h, lineH: Math.round((settings['body-font-size-pt'] * 0.8) * (96 / 72) * 1.25), isContinuation: isCont, mode: isCont ? 'split-rest' : 'normal' });
+      cur.footnotes.push({ ...n, fragmentIndex: Number.isInteger(n.fragmentIndex) ? n.fragmentIndex : 0, heightPx: h, lineH: Math.round((settings['body-font-size-pt'] * 0.8) * (96 / 72) * 1.25), isContinuation: isCont, mode: isCont ? 'split-rest' : 'normal' });
     }
     recomputeFnBudget(cur); // probe==reserved — פונקציה אחת (unified) לשני הצרכים
   }
