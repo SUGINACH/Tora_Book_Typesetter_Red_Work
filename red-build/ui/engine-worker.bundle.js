@@ -944,7 +944,7 @@ function typeset(rawText, settingsIn, env = {}) {
     // text from which flatBody was built — a shared running index (exact, no searches).
     const textParts = t.parts.filter(p => p.kind === 'text');
     const flatBody = textParts.map(p => p.value).join(' ');
-    const parenSpans = parenScale !== 1 ? parenSpansOfFlat(flatBody) : [];
+    const parenSpans = parenSpansOfFlat(flatBody);
     const flatWordOffsets = [];
     {
       let cum = 0;
@@ -1117,6 +1117,14 @@ function typeset(rawText, settingsIn, env = {}) {
       // המונה מוצג בשורה הראשונה של הבלוק (הפס של full-width מטופל ברנדרר מהמידע על הפס)
       if (csInfo.counterMark && lines.length) lines[0].csCounterMark = csInfo.counterMark;
     }
+    const parenWordCount = lines.reduce((sum, line) => sum + (line.words || []).length, 0);
+    if (parenSpans.length && parenWordCount === flatWordOffsets.length) {
+      let sourceWordIndex = 0;
+      for (const line of lines) {
+        line.sourceWordRefs = (line.words || []).map(() => ({ tokenId: t.id, wordIndex: sourceWordIndex++ }));
+      }
+    }
+
     const blk = {
       kind: 'paragraph', tokenId: t.id, parts: t.parts, notes, bodyMarkers, lines,
       unmatchedClosers: t.unmatchedClosers || [], part: currentPart, dh,
@@ -1665,20 +1673,27 @@ function typeset(rawText, settingsIn, env = {}) {
         }
         if (startLine < 0 || endLine < 0) continue;
 
-        const found = { start: null, end: null };
-        const inspectPlacedLines = (page, lines, columnIndex) => {
-          for (const line of lines || []) {
-            const tokenId = line.tokenId != null ? line.tokenId : (line.meta && line.meta.tokenId);
-            const lineIdx = line.meta && line.meta.lineIdx;
-            if (tokenId !== b.tokenId || !Number.isInteger(lineIdx)) continue;
-            if (lineIdx === startLine) found.start = { page: page.index, col: columnIndex };
-            if (lineIdx === endLine) found.end = { page: page.index, col: columnIndex };
+        const locateSourceWord = (wordIndex) => {
+          let found = null;
+          let ambiguous = false;
+          const inspectPlacedLines = (page, lines, columnIndex) => {
+            for (const line of lines || []) {
+              const refs = Array.isArray(line.sourceWordRefs) ? line.sourceWordRefs : [];
+              if (!refs.some((ref) => ref && ref.tokenId === b.tokenId && ref.wordIndex === wordIndex)) continue;
+              if (found) ambiguous = true;
+              else found = { page: page.index, col: columnIndex };
+            }
+          };
+          for (const page of pages) {
+            inspectPlacedLines(page, page.spanning && page.spanning.lines, -1);
+            for (let ci = 0; ci < page.columns.length; ci++) inspectPlacedLines(page, page.columns[ci], ci);
           }
+          return ambiguous ? null : found;
         };
-        for (const page of pages) {
-          inspectPlacedLines(page, page.spanning && page.spanning.lines, -1);
-          for (let ci = 0; ci < page.columns.length; ci++) inspectPlacedLines(page, page.columns[ci], ci);
-        }
+        const found = {
+          start: locateSourceWord(range.startWi),
+          end: locateSourceWord(range.endWi)
+        };
 
         if (found.start && found.end) {
           spanId++;
@@ -1694,8 +1709,8 @@ function typeset(rawText, settingsIn, env = {}) {
           }
         } else {
           eventLog.emit('scope-map', 'paren-range-unmapped', {
-            token: b.tokenId, reason: 'placed-line-index-not-found',
-            startLine, endLine, foundStart: !!found.start, foundEnd: !!found.end
+            token: b.tokenId, reason: 'source-word-reference-not-found-or-ambiguous',
+            startWordIndex: range.startWi, endWordIndex: range.endWi, foundStart: !!found.start, foundEnd: !!found.end
           });
         }
       }
@@ -3642,6 +3657,9 @@ function fixDropWordInColumns(columnLines, minLen = 3, opts = {}) {
       if (mergedW == null || mergedW > colW - fitEps) continue; // לא נכנס — המילה נשארת (status quo)
       // משלבים את המילה הנופלת לתוך השורה הראשונה של הטור הבא (גרירה)
       nextFirst.words.unshift(...last.words);
+      if (Array.isArray(last.sourceWordRefs) || Array.isArray(nextFirst.sourceWordRefs)) {
+        nextFirst.sourceWordRefs = [...(last.sourceWordRefs || []), ...(nextFirst.sourceWordRefs || [])];
+      }
       nextFirst.widthPx = mergedW; // רוחב השורה אחרי המיזוג (נצרך ל-runt/balance)
       lines.pop();
       fixed = true;
