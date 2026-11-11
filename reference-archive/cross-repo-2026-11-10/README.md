@@ -121,4 +121,34 @@ Each destination blob was compared with its source Git blob during import. The 6
 | `imud-main/layout-scenarios/problem_chapters.txt` | `SUGINACH/IMUD_TORANI@main` | `da31142ed868da987b14af5213b41495e81733c4` | `tests/corpus/problem_chapters.txt` | `3eb24e7dadfb09cefa3e12745574d644df72310f` |
 | `imud-main/layout-scenarios/test_doc.txt` | `SUGINACH/IMUD_TORANI@main` | `da31142ed868da987b14af5213b41495e81733c4` | `tests/corpus/test_doc.txt` | `e0146bafae845e321e8bfd5cbfcea5714dabed12` |
 
-**Total:** 75 archived files, plus this README (67 previously indexed cross-repo reference files and 8 IMUD layout-suite source files). This is provenance-preserving reference material, not adoption into runtime.
+### Additional unique source files verified after the initial index
+
+The following three upstream source files were present in the archive tree but were not included in the original 75-file index. Each destination Git blob was compared with the file at the exact pinned source commit and matched byte-for-byte.
+
+| Archived path | Source ref | Locked source commit | Original source path | Git blob |
+|---|---|---|---|---|
+| `react-main/conventions/work-conventions.md` | `SUGINACH/Tora_Book_Typesetter_React@main` | `a2fa18e5395563e90a539a51c1f8856df393ab1b` | `docs/conventions/work-conventions.md` | `3a177eae23f12729042f57aa13f70c086b406bf2` |
+| `typesetter-doc-main/chatgpt_v23/session/Session_handoff.md` | `SUGINACH/Typesetter_doc@main` | `ad71c63f87a940ac92140ea1d7a1f4de7eb8f8f9` | `chatgpt_v23/session/Session_handoff.md` | `b290bb1e7a9a6da4bb4342192261370ae420bf79` |
+| `typesetter-doc-main/shared/research/Functional_gaps_analysis.md` | `SUGINACH/Typesetter_doc@main` | `ad71c63f87a940ac92140ea1d7a1f4de7eb8f8f9` | `shared/research/Functional_gaps_analysis.md` | `90c51d3f342f975976e2bb6b1831ad790bb1a1cd` |
+
+### Duplicate path-preserving copies
+
+Nine additional archived paths are exact Git-blob duplicates of already indexed files. They preserve the source directory layout; each duplicate has the same blob ID as its canonical indexed copy and does not add a distinct source file.
+
+| Additional archived path | Canonical indexed copy | Identical Git blob |
+|---|---|---|
+| `typesetter-doc-main/chatgpt_v23/issues/Issue_coverage_matrix.md` | `typesetter-doc-main/v23/Issue_coverage_matrix.md` | `24660ead6d48c295c68a4349a5df06291995cf95` |
+| `typesetter-doc-main/chatgpt_v23/technical/Layout_dependency_map.md` | `typesetter-doc-main/v23/Layout_dependency_map.md` | `28de3fd5bc8ad3290044c127ce71bf54fe208dcb` |
+| `typesetter-doc-main/chatgpt_v23/technical/Technical_history_and_architecture.md` | `typesetter-doc-main/v23/Technical_history_and_architecture.md` | `fc4142c28e2bcc1d745effd9755e84f087de18f3` |
+| `typesetter-doc-main/shared/plans/Issue_resolution_protocol.md` | `typesetter-doc-main/plans/Issue_resolution_protocol.md` | `5a2643924d4873594b66f9b2af2bc4aca35c3071` |
+| `typesetter-doc-main/shared/plans/Plan_stability_completeness_transparency.md` | `typesetter-doc-main/plans/Plan_stability_completeness_transparency.md` | `4d9188e254fad87a5549949774af501a5ec69850` |
+| `typesetter-doc-main/shared/plans/Working_rules.md` | `typesetter-doc-main/plans/Working_rules.md` | `3b4fe2cab862ddeb04a8b96da7eedae68f884902` |
+| `typesetter-doc-main/shared/research/Deterministic_typesetting_engine.md` | `typesetter-doc-main/research/Deterministic_typesetting_engine.md` | `8eb7bbaf2c694c95339a3be97fd4375643717875` |
+| `typesetter-doc-main/shared/research/Dual_column_RTL_design.md` | `typesetter-doc-main/research/Dual_column_RTL_design.md` | `e723a9d82a37e2520e8e8f73e49dc65eb54e7179` |
+| `typesetter-doc-main/shared/research/Knuth-Plass_deep_dive.md` | `typesetter-doc-main/research/Knuth-Plass_deep_dive.md` | `c3cadef1e4840e792c2c9db07eb3f85d90409169` |
+
+### Archive-local guide
+
+`imud-main/layout-scenarios/README.md` is an explanatory guide written for this archive (blob `be39be5f732efe2993fc9c69fd810c3ac58f86da`); it is not an upstream source file and is not counted in the source total.
+
+**Total:** 78 distinct upstream source files (67 cross-repository reference files + 8 IMUD layout-suite source files + 3 additional source files), plus 9 exact duplicate path copies, one archive-local guide and this index README: **89 tracked files** in this archive subtree. This is provenance-preserving reference material, not adoption into runtime.

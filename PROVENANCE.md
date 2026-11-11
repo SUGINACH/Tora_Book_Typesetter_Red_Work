@@ -1,5 +1,5 @@
 # PROVENANCE.md — מקורות וייחוס · Tora Book Typesetter Red
-> מצב: 10.11.2026 (ייבוא נתוני Makom Bina v20.5 וקורפוס Gold V21; הקפאת P6/P7).
+> מצב: 11.11.2026 (השלמת ביקורת provenance, הרחבת אינדקס הארכיון ותיקון בדיקת preset; הקפאת P6/P7).
 
 ## קוד
 - **בסיס:** בנייה מאפס (from-scratch) לפי `spec/01_MASTER_SPECIFICATION.md` + `spec/02_MASTER_WORK_PLAN.md`. אין העתקת קוד ריצה מהגרסאות הקודמות; יש **היסק לקחים** מתועדים (lessons) שהומרו למנגנונים ולבדיקות.
@@ -69,9 +69,9 @@
 ## ארכיון בין-ריפואי — עדכון מלא 10.11.2026
 
 - **נתיב:** `reference-archive/cross-repo-2026-11-10/`; אינדקס קובץ-מול-מקור: `reference-archive/cross-repo-2026-11-10/README.md`.
-- נשמרו **75 קובצי מקור**: Gold V21, Green V23, Orange main, Yellow V22, React main, Kotlin main, Rust main, Typesetter_doc main ו-IMUD main. לכל קובץ נרשמו source ref, commit נעול, path מקורי ו-Git blob ID; זהות blob ביעד אומתה מול המקור.
+- נשמרו **78 קובצי מקור ייחודיים** מתשעת המקורות: Gold V21, Green V23, Orange main, Yellow V22, React main, Kotlin main, Rust main, Typesetter_doc main ו-IMUD main. שלושת המסמכים שנוספו לאחר הספירה המקורית הם React work-conventions, Typesetter_doc Session_handoff ו-Functional_gaps_analysis; לכל אחד אומת Git blob מול הקומיט והנתיב המקוריים. תשעה נתיבי ארכיון נוספים הם עותקים מדויקים עם blob זהה; מדריך IMUD אחד נוצר מקומית ואינו נספר כמקור. בעץ הארכיון 89 קבצים כולל README.
 - בין החומרים: שיטות audit רב-שלבי, מודולי diagnostics/trace ישנים ובדיקותיהם, screenshot report helper, 11 line-battery raw inputs של React, 38 תרחישי layout היסטוריים של IMUD baseline, מפרטי/ADRs/מחקרים/מפות תלויות/מטריצות תאימות.
-- **גבול הפעלה:** כל 75 הקבצים ארכיוניים בלבד; אינם נטענים ב-runtime, אינם ב-`npm test`, אינם ב-corpus manifests ואינם ב-GitHub Actions. אין להריץ renderer/runner ישנים מול RED. כל התאמה עתידית תיכתב כקובץ RED חדש, מחוץ לארכיון.
+- **גבול הפעלה:** כל 78 קובצי המקור, תשעת העותקים הכפולים והמדריך המקומי הם ארכיוניים בלבד; אינם נטענים ב-runtime ואינם ב-`npm test`, ב-corpus manifests או ב-GitHub Actions. אין להריץ renderer/runner ישנים מול RED. כל התאמה עתידית תיכתב כקובץ RED חדש, מחוץ לארכיון.
 - **הבהרת ספירה:** baseline של סוויטת IMUD הנעולה מכיל 38 שמות תרחיש; README המקור אומר 21 והוא stale. אין להשתמש ב-page counts/violation counts של baseline כהגדרת הצלחה ל-RED.
 
 ### אימות סוויטת IMUD ההיסטורית
@@ -84,5 +84,6 @@
 ### Makom Bina v20.5 — מצב שימוש בפועל
 
 - ארבעת JSON נמצאים ב-`red-build/ui/assets/imud/presets/makom-bina-v20.5/` ואומתו (249 מפתחות בכל אחד).
-- הקוד הפעיל `red-build/src/ui/imud-library.js` עדיין מגדיר רק `SETTING_SETS = ['תלמוד', 'פרשנות', 'קונטרס']` וקורא מ-`assets/imud/setting_sets/`. לכן נתוני Makom Bina נשמרו אך **אינם מוצגים כרגע בבורר הפעיל**.
-- נדרשת הרחבת UI נפרדת לקבוצת preset בעלת מקור/גרסה, preview והחלה מפורשת. אין לשנות default או להחליף את שלוש הערכות הרגילות.
+- `red-build/src/ui/imud-library.js` כבר מגדיר `SETTING_PRESETS` נפרד עבור Makom Bina v20.5 עם `listSettingPresets/loadSettingPreset`; `red-build/src/ui/settings-panel.js` כבר מציג בחירה, preview עם מקור/גרסה וכפתור Apply מפורש. לכן לא נדרשה שכבת UI חדשה — ייבוא ארבעת קובצי הנתונים השלים את הנתיב הקיים.
+- נוספה `red-build/tests/integration/setting-presets.test.js` לשרשרת הבדיקות. ריצת PR על HEAD הישן חשפה assertion שציפה ל-URL מקודד אף שהבדיקה עצמה מפענחת את הנתיב; תוקן ב-commit `31e7b4c`. אין עדיין לטעון שהריצה החוזרת עברה עד לקבלת תוצאת CI ל-HEAD המתוקן.
+- ברירות המחדל הרגילות לא שונו; ה-preset אינו מופעל אוטומטית.

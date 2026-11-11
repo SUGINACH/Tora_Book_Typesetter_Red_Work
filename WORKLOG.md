@@ -2895,3 +2895,28 @@ CI על HEAD `53834bc` אישר `s52-dp-fixes` ‏23/23 ו-`s52-ui-fixes` ‏18/
 ### Session 8 follow-up — תיקון בדיקת Makom Bina (10.11.2026)
 
 CI על commit `29f541e` הריץ את הסוויטה החדשה: שתי בדיקות עברו, ובדיקת טעינת ארבע הערכות נכשלה עם `profile is not defined`. בבדיקה התגלה שהביטוי `loaded.settings._layout-profile` נכתב בנקודה; JavaScript פירש אותו כחיסור וביקש משתנה בשם `profile`. זו טעות בתחביר הבדיקה בלבד, לא תקלה ב-loader ולא בקוד הייצור. תוקן ל-`loaded.settings['_layout-profile']` ב-commit `455d800`. נדרשת ריצת CI חוזרת כדי לאמת את כל ארבעת הקבצים ואת כל מטריצת Node.
+
+
+### Session 10 follow-up — archive completeness, Makom Bina status and CI correction (11.11.2026)
+
+#### Archive inventory and provenance reconciliation
+
+- Audited the complete Git tree under `reference-archive/cross-repo-2026-11-10/`, not only the index table.
+- The subtree contains 89 tracked files in total: 78 distinct upstream source files, 9 duplicate path-preserving copies with blob IDs identical to their canonical copies, one archive-local IMUD scenario guide, and the archive index README.
+- Three unique upstream documents were present in the tree but absent from the 75-source index: React `docs/conventions/work-conventions.md`; Typesetter_doc `chatgpt_v23/session/Session_handoff.md`; Typesetter_doc `shared/research/Functional_gaps_analysis.md`. Each destination Git blob was fetched from the archive and matched against the exact source commit/path.
+- The nine repeated paths under Typesetter_doc's `chatgpt_v23/` and `shared/` directories were compared by blob ID to the indexed `v23/`, `plans/` and `research/` copies. They are byte-identical aliases, not nine additional source documents.
+- `imud-main/layout-scenarios/README.md` is an archive-local explanatory guide, not a source file from IMUD; the original source README is separately preserved as `imud-main/README-tests.md`.
+- Updated the archive index, cross-repository import plan, PROVENANCE and step-audit gap analysis to distinguish source documents, duplicate aliases and local archive documentation. No archived source bytes were changed.
+
+#### Makom Bina v20.5 and failed CI investigation
+
+- Rechecked `imud-library.js` and `settings-panel.js`: the isolated `SETTING_PRESETS` registry, picker, source/version display, preview and explicit Apply action already exist. The four imported JSON files complete their expected asset paths; there was no need to add a second UI layer or touch the typesetting pipeline.
+- The PR workflow on old HEAD `3ef4d27a1289c20725752f1ab5c02e06ca576253` showed `setting-presets` at 2/3. The loader fetched the asset; the failing assertion compared a decoded request path against an encoded Hebrew filename.
+- Corrected only `red-build/tests/integration/setting-presets.test.js` in commit `31e7b4cf6e9c3e348c26646ced57980550b8e267`. No engine, UI, runtime asset, renderer, worker or layout workflow code was changed by this fix.
+- CI for the corrected HEAD must be checked separately; the previous failure is not represented as a pass. The PR head remains unmerged and the original RED repository is untouched.
+
+#### Safety boundary
+
+- No P6/P7 calculation, execution, report, line/word/paragraph comparison or task was performed or reintroduced.
+- No legacy renderer, layout harness, or archived trigger runner was executed.
+- These changes are documentation/index reconciliation plus a targeted test assertion correction. They do not alter layout output or active settings.

@@ -15,7 +15,7 @@
 
 ## 2. Sources inspected and preserved
 
-The 67-file source archive is indexed in `reference-archive/cross-repo-2026-11-10/README.md`; its table pins each file to an exact source commit and Git blob.
+The archive index records 78 distinct upstream source files, 9 exact duplicate path copies and one archive-local guide; each upstream source entry is pinned to its source commit/path and Git blob in `reference-archive/cross-repo-2026-11-10/README.md`.
 
 | Source | Relevant material | RED disposition |
 |---|---|---|
@@ -27,7 +27,7 @@ The 67-file source archive is indexed in `reference-archive/cross-repo-2026-11-1
 | Kotlin main | Technical specification | Reference document archived. No Compose/Kotlin runtime is imported. |
 | Rust main | Fixed-point, shaping/BiDi, PDF, compatibility and provenance documents | Reference documents archived. No Rust engine or package is imported. |
 | Typesetter_doc main | Stability plan, issue-resolution protocol, determinism/Knuth–Plass/RTL research, V23 maps/catalogs, repository matrix | Curated documents archived as read-only reference. Historical status/metrics in them are not current RED evidence. |
-| IMUD main | Makom Bina v20.5 default and three named setting sets | Four JSON files imported into a separate runtime asset directory, but not yet registered in the active UI picker. |
+| IMUD main | Makom Bina v20.5 default and three named setting sets | Four JSON files imported into the isolated runtime preset path; the existing picker already exposes preview and explicit apply. The old layout harness remains archive-only. |
 
 ## 3. What is already implemented in RED — and what is not
 
@@ -130,7 +130,7 @@ This structure satisfies the user's need to see both the target status and all o
 
 | Component | Current status | Safe next step | Not permitted yet |
 |---|---|---|---|
-| Makom Bina v20.5 data | Four 249-key JSON files exist at `red-build/ui/assets/imud/presets/makom-bina-v20.5/`; default JSON equals the existing fixture; three sets differ from the regular sets | Add a separate, explicit preset group in `imud-library` and `settings-panel`, with preview/source/version label and an explicit Apply action; preserve current three-set picker | Do not silently make it default, overwrite regular sets, or route it through the default loader without a distinct source path |
+| Makom Bina v20.5 data | Four 249-key JSON files exist at `red-build/ui/assets/imud/presets/makom-bina-v20.5/`; default JSON equals the existing fixture; three sets differ from the regular sets. The isolated preset registry and preview/apply picker already exist. | Data import completed; integration test added for all four files, source metadata, complete disposition and isolated paths. A path-normalization assertion was corrected in commit `31e7b4c`; verify the rerun before calling the test green. | Do not silently make it default, overwrite regular sets, or route it through the default loader without a distinct source path |
 | Gold trigger corpus | Ten original text files are archived separately under `red-build/tests/fixtures/legacy-trigger-corpus/gold-v21/` | Review each candidate for current D-100 structure and convert only useful cases into new RED-native fixtures under a different path | Do not run legacy files unchanged or add them to CI |
 | React line-battery | Eleven short raw inputs are in the source archive, not in the active corpus | Select cases as semantic input tests (Unicode/BiDi, note-brackets, empty lines, hyphens, long word, niqqud, parentheses, whitespace) only where RED coverage is absent | Do not treat line outputs, line counts or historical line choices as expected values |
 | Green screenshot-to-PDF helper | Original script and fixtures are archived | Define a RED screenshot manifest and write a separate adapter that accepts only that schema; validate paths and remove hard-coded exclusions | Do not run the old helper directly against RED or make it a CI dependency |
@@ -143,8 +143,8 @@ This structure satisfies the user's need to see both the target status and all o
 
 The current safe imports (JSON/text/documents) were completed without modifying the active engine. For future changes:
 
-1. **No-code mapping first:** finish this document and keep the 67-file archive immutable.
-2. **Preset UI adapter:** a separate data/UI change; validate JSON and mapping with existing `importImudSettings`, one focused UI test and no layout engine changes.
+1. **No-code mapping first:** the source inventory is now documented; keep the 78 unique source files and their archive copies immutable.
+2. **Preset UI adapter:** completed by the pre-existing isolated registry/picker and the new data files; verify the corrected integration-test run. No layout-engine change was needed.
 3. **Input fixtures:** promote only D-100-valid RED-native derivatives and add focused semantic tests; no full-corpus run for every fixture edit.
 4. **Screenshot report adapter:** first validate its standalone manifest reader/writer on synthetic screenshots; keep it out of the runtime and default CI until proven useful.
 5. **Step-audit pure model:** implement a deterministic snapshot/delta reducer over already-serialized page models, with unit tests only; no pipeline instrumentation yet.

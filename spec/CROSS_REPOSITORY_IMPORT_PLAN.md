@@ -101,20 +101,21 @@
 
 | מקור | מה נשמר/הועבר | מצב הפעלה |
 |---|---|---|
-| IMUD main | Makom Bina v20.5 — 4 קובצי JSON (249 מפתחות); סוויטת layout היסטורית — 8 קבצים (scenario generator, baseline, runner, checker, common helper, README ושני מסמכי קלט) | נתוני preset נמצאים בנתיב runtime נפרד אך עדיין אינם בבורר. סוויטת הבדיקות הישנה בארכיון בלבד. |
+| IMUD main | Makom Bina v20.5 — 4 קובצי JSON (249 מפתחות); סוויטת layout היסטורית — 8 קובצי מקור | ארבעת קובצי ה-preset נטענים דרך קבוצת preset מבודדת; ה-picker מציג מקור/גרסה, preview והחלה מפורשת. סוויטת ה-layout ההיסטורית בארכיון בלבד. |
 | Gold V21 | 10 קובצי test-triggers; step-audit method/runner; audit expansion/text-integrity; issue-PDF generator; trace manager ותיעוד | קורפוס הטקסט ב-fixture archive נפרד; 8 קובצי השיטה/כלים בארכיון reference. אין הרצה או CI. |
 | Green V23 | screenshot-to-PDF helper ושלושה smoke fixtures; שיטת/מפת audit נשמרו באמצעות Typesetter_doc | ארכיון בלבד; נדרש manifest ו-adapter חדש של RED לפני שימוש. |
 | Yellow V22 | engine-inputs, engine-trace, engine-diagnostics ו-unit tests מקוריים | ארכיון בלבד; ה-EventLog/Ledger של RED נשארים מערכת האבחון היחידה. |
 | Orange main | שני מסמכי step-audit ושיטת audit מקבילה | ארכיון בלבד; ה-runner תלוי ב-globals של המימוש הישן. |
-| React main | SRS; ADR 001–011; migration inventory, source manifest, settings matrix, compatibility report; 11 line-battery input files | ארכיון בלבד. ה-fixtures הם קלטים סמנטיים; אין expected lines או התאמת פלט. |
+| React main | SRS; ADR 001–011; migration inventory, source manifest, settings matrix, compatibility report; 11 line-battery inputs; work-conventions | ארכיון בלבד. ה-fixtures הם קלטים סמנטיים; אין expected lines או התאמת פלט. |
 | Kotlin main | Technical specification | מסמך ארכיון בלבד; אין runtime או dependencies. |
 | Rust main | ADRs, compatibility/ownership, provenance/source recovery | מסמכי חוזה ארכיוניים; אין Rust engine. |
-| Typesetter_doc main | תכנית יציבות, פרוטוקול טיפול בממצאים, כללי עבודה, מחקר determinism/Knuth–Plass/RTL, מפת תלויות והיסטוריה V23, issue catalog/coverage ומטריצת repos | מסמכים ארכיוניים; נתונים ותוצאות CI שבהם מתוארכים לענפים ולקומיטים הישנים בלבד. אין להסיק מהם מצב RED נוכחי. |
+| Typesetter_doc main | תכנית יציבות, פרוטוקול טיפול בממצאים, כללי עבודה, מחקר determinism/Knuth–Plass/RTL, מפת תלויות והיסטוריה V23, issue catalog/coverage, session handoff, functional-gaps analysis ומטריצת repos | מסמכים ארכיוניים; נתונים ותוצאות CI שבהם מתוארכים לענפים ולקומיטים הישנים בלבד. אין להסיק מהם מצב RED נוכחי. |
 
 ### 8.2 ארכיון וייחוס
 
-- הנתיב `reference-archive/cross-repo-2026-11-10/` מכיל כעת **75 קובצי מקור** בנוסף ל-README: 67 קובצי reference מהייבואים הקודמים ועוד 8 קובצי סוויטת layout מ-IMUD main.
-- README הארכיון הוא אינדקס provenance ברמת קובץ: repository/ref, commit מקור, נתיב מקורי ו-Git blob ID. כל 75 קובצי המקור הועתקו byte-for-byte; אין להפוך אותם לקוד פעיל.
+- הנתיב `reference-archive/cross-repo-2026-11-10/` מכיל **78 קובצי מקור ייחודיים**: 67 קובצי reference מהייבואים הקודמים, 8 קובצי סוויטת layout מ-IMUD main ו-3 מסמכים נוספים (React work-conventions, Typesetter_doc Session_handoff ו-Functional_gaps_analysis).
+- קיימים גם 9 עותקי נתיב כפולים עם Git blob זהה, מדריך מקומי אחד לסוויטת IMUD ו-README האינדקס; בסך הכול 89 קבצים בעץ הארכיון.
+- README הארכיון הוא אינדקס provenance ברמת קובץ: repository/ref, commit מקור, נתיב מקורי ו-Git blob ID. שלושת המקורות הנוספים אומתו מול ה-blob בקומיט המקור; תשעת העותקים הכפולים הושוו ל-blob של הקובץ הקנוני. אין להפוך אותם לקוד פעיל.
 - סוויטת IMUD: baseline הנעול מכיל **38 רשומות scenario**. ה-README המקורי אומר 21 — נתון stale ביחס ל-baseline בקומיט המקור הנעול. לא שינינו את המקור; תיעדנו את הסתירה ב-README הארכיוני.
 - הייבוא אינו מעיד שכל חמשת המאגרים ההיסטוריים הועברו בשלמותם. זהו ארכיון ממוקד של רכיבים, תיעוד, harnesses ו-fixtures שנבחרו; יתר הקבצים/היסטוריית הריפו לא הועתקו.
 
@@ -127,7 +128,7 @@
 
 ### 8.4 סדר ההמשך המתוקן
 
-1. **Makom Bina UI adapter:** ה-loader הקיים ב-`imud-library.js` מכיר רק את שלוש ערכות הסגנון הרגילות. יש להוסיף קבוצת preset נפרדת ל-v20.5, עם שם/מקור/גרסה, preview והחלה מפורשת. לא לשנות את ברירת המחדל, לא להעתיק לתיקיית הערכות הרגילה ולא להפעיל preset באתחול.
+1. **Makom Bina v20.5 — הושלם מבחינת נגישות UI:** בדיקת הקוד הראתה שקבוצת ה-preset המבודדת וה-picker כבר קיימים ב-`imud-library.js` וב-`settings-panel.js`; הם מציגים מקור/גרסה, טוענים preview ומחילים רק בלחיצה מפורשת. ארבעת קובצי JSON ממלאים את הנתיבים הקיימים. נוספה בדיקת integration לטעינה, disposition ונתיבים; תיקון assertion לנתיב decoded נרשם ב-commit `31e7b4c`, ואימות CI ל-HEAD המתוקן נדרש לפני סימון הבדיקה כירוקה. אין שינוי default או החלפת הערכות הרגילות.
 2. **בחירת fixtures מ-IMUD line-battery ו-layout scenarios:** למפות כיסוי סמנטי מול בדיקות RED; לבחור רק מקרים חסרים, לבדוק D-100, וליצור קובצי RED-native חדשים. אין להריץ harness ישן ואין לשמר baseline page counts או line layouts כציפייה.
 3. **Gold trigger corpus:** לעבור על 10 הקבצים, לזהות תחביר ישן/מבנים לא תקינים, ולהפיק נגזרי RED רק אם הם עומדים ב-D-100 ומכסים דרישה שעדיין חסרה.
 4. **Screenshot report adapter:** להגדיר screenshot-manifest של RED ואז לכתוב adapter עצמאי. אין להשתמש בקובץ Green המקורי כ-runner פעיל.
