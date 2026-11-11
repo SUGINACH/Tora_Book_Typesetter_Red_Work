@@ -95,3 +95,12 @@ RED כבר מחזיק:
 - קובצי Yellow והבדיקות המקוריות נשארים ארכיון בלבד ואינם מחוברים ל-CI.
 - P6/P7 מחוץ לתחום לחלוטין; אין לבצע חישוב, הפעלה, דוח או התאמה שלהם.
 
+
+
+## 8. עדכון מימוש — 11.11.2026 (מחליף את סעיפי הסדר הקודמים)
+
+- trace-v2 capture metadata הוכנס ב-commit 69a80232, ונבדק ב-off/minimal/standard/full; bundles סונכרנו אוטומטית.
+- Pure StepAudit reducer קיים בקוד ובבדיקות יחידה: commits ba233987, 91b38c3c ו-2bfb7245. הוא מכסה snapshot/delta סינתטי, textChanged, pageMoves, same-page split/merge ו-verdicts שמרניים.
+- אין עדיין adapter מה-page model האמיתי. ה-Ledger מספק page מספרי ו-target טקסטואלי בלבד; אין להסיק מהם מזהי pageId/elementId.
+- השלב הבא הוא מיפוי מודל RED ויצירת adapter טהור, ורק לאחריו קישור issue/operation והוספת checkpoints אופציונליים.
+- Yellow נשאר archive-only. אין DOM geometry, global monkey-patching או מערכת trace שנייה.

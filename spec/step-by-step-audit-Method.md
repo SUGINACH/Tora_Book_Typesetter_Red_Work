@@ -389,4 +389,30 @@
 
 ---
 
-**סטטוס:** מפרט שיטה מוכן לבסיס המימוש. שלב המימוש הראשון הוא reducer טהור על snapshots/deltas סינתטיים; אין עדיין instrumentation חדש של checkpoints במנוע.
+**סטטוס נכון ל-11.11.2026:** reducer טהור קיים בנתיב red-build/src/engine/audit/step-audit-reducer.js, ובדיקותיו בנתיב red-build/tests/unit/step-audit-reducer.test.js. הוא נכלל ב-npm test וב-test:unit, ומקבל snapshots סינתטיים במבנה מנורמל. הוא עדיין אינו מחובר ל-pipeline, ל-Ledger או ל-Worker; אין עדיין adapter שמפיק snapshots מתוך מודל העמוד האמיתי, ואין instrumentation של checkpoints במנוע. לכן זו תשתית שנבדקת ביחידות, לא Step-by-Step Audit פעיל של מסמך אמיתי.
+
+
+## 14. מצב המימוש הראשון — Pure reducer
+
+### 14.1 קבצים והיקף
+- מימוש: red-build/src/engine/audit/step-audit-reducer.js.
+- בדיקות: red-build/tests/unit/step-audit-reducer.test.js.
+- הפעלה: npm test וכן npm run test:unit.
+- המודול אינו מיובא על ידי pipeline.js, engine-worker-main.js או Testing Tab. עצם הימצאותו ב-src/engine/audit/ אינה מפעילה אותו בעימוד.
+
+### 14.2 חוזה הקלט המנורמל
+ה-reducer מצפה לאובייקט הכולל checkpoints ו-issues. כל checkpoint כולל checkpointId, seq, stage, operationId אופציונלי ו-pages. כל page כולל pageId יציב, pageIndex, pageType, metrics, evaluatedKinds, findings ו-elements. לכל element נדרשים elementId ייחודי, role, geometry (x/y/w/h), parentId, columnId, readingOrder, attributes, style, textDigest, ו-lineage כאשר יש פיצול/מיזוג.
+
+כל finding כולל issueId (או issue_id/id), kind ו-targetElementId. ה-reducer אינו מסיק מזהה אלמנט מטקסט, ממספר עמוד או מ-y. רשומת issue כוללת issue_id, kind, pageId, targetElementId, status, transitions, candidates ונתוני capacity/causalEvidence אם קיימים. ה-Ledger הקיים עדיין משתמש ב-page מספרי וב-target טקסטואלי; אסור למפות אותם ל-pageId/elementId בלי adapter שמוכיח זהות.
+
+### 14.3 פעולות delta שנבדקות
+ה-reducer מסווג added, removed, moved, resized, restyled, textChanged, reparented ו-structuralChanged; וכן split/merge כאשר lineage מוכיח החלפה של מקור אחד בשני ילדים או יותר, או שני מקורות ומעלה ביעד אחד. הוא גם מזהה pageMoves של elementId יציב בין pageIds. מעבר עמוד עדיין מופיע כ-remove/add בדלתאות המקומיות, ובנוסף כאירוע מעבר עמוד מפורש.
+
+### 14.4 גבולות ידועים של הגרסה
+- split/merge מזוהים כרגע בתוך אותו עמוד בלבד; פיצול שחוצה עמודים דורש lineage ברמת checkpoint, ולא ייקבע על סמך התאמה משוערת.
+- סיווג issue דורש pageId/elementId יציבים ו-evaluatedKinds מפורשים. אם חסרים, התוצאה not-comparable/unresolved וה-capture מסומן incomplete.
+- correction-blocked נשען על candidate rejection עם reason; correction-reverted דורש active→absent→active ומעברי Ledger תואמים; side effect דורש sibling delta וראיית שינוי capacity מפורשת.
+- חסר עדיין producer מתוך RED של pageId, elementId, evaluatedKinds, snapshots ו-operationId. זהו שלב adapter/model mapping נפרד לפני חיבור למנוע.
+- תוצאות unit tests אינן תחליף ל-no-op proof, ל-Worker integration או לבדיקת stress מלאה.
+
+השלב הבא הוא למפות את מודל העמוד וה-Ledger הקיימים לשדות החוזה, ולזהות אילו מזהים כבר קיימים ואילו מחייבים יצירה סמנטית. רק לאחר המיפוי יוגדר adapter. אין להוסיף instrumentation לפני שה-adapter וה-reducer מוכחים בנפרד.

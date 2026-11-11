@@ -175,3 +175,13 @@ The field-by-field comparison is recorded in `spec/YELLOW_DIAGNOSTICS_CONTRACT_G
 נכתב מסמך שיטה מלא ונפרד: `spec/step-by-step-audit-Method.md`. הוא מגדיר את חלון הממצא, מלאי כל האלמנטים בעמוד, page/element identity ו-lineage, delta, רף הוכחת סיבתיות, סטטוסי Ledger, completeness, אפשרויות כיוונון, תקציב ביצועים וקריטריוני קבלה.
 
 המסמך הוא מפרט ליישום, לא הצהרה שהמנגנון כבר פעיל. סדר העבודה נשאר: reducer טהור → קישור operation/issue → instrumentation opt-in → Testing Tab. אין DOM snapshots או global wrappers.
+
+
+## 9. מימוש reducer — עדכון 11.11.2026 (מחליף את סעיפי התכנון הקודמים בנושא)
+
+השלב של reducer טהור הושלם כ-prototype מבודד:
+- step-audit-reducer.js מחשב delta של אלמנטים ועמודים, כולל שינוי טקסט, מעבר עמוד, ופיצול/מיזוג עם lineage מפורש.
+- בדיקות יחידה חיוביות ושליליות נוספו ונכללו בפקודות הבדיקה.
+- ביקורת סיבתיות הידקה את הדרישה ל-active→absent→active עבור correction-reverted, ול-sibling delta + capacity change עבור competing-repair-side-effect.
+- עדיין אין adapter מה-page model האמיתי, ואין checkpoints במנוע. ה-Ledger הנוכחי מספק page מספרי ו-target טקסטואלי; יש למפות אותם בזהירות ולא להציגם כמזהי page/element יציבים.
+- ה-reducer אינו משנה את ה-layout, אינו נקרא מה-pipeline ואינו רץ על טקסטי הארכיון.

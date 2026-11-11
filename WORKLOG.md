@@ -3009,3 +3009,44 @@ PR #6 נשאר פתוח מול `main`, לא מוזג, ו-GitHub דיווח `merg
 
 ### 3. גבול ביצוע
 זהו מפרט, לא מימוש מלא. לא נוספו עדיין checkpoints למנוע ולא נוצר reducer. השלב הבא הוא reducer טהור על snapshots/deltas סינתטיים, לפני instrumentation במנוע. אין DOM snapshots, global monkey-patching או rerun היסטורי.
+
+
+## Session 14 — הרחבת ה-reducer ובדיקת תקלת CI תשתיתית (11.11.2026)
+
+### 1. Pure StepAudit reducer
+נוסף ב-commit ba233987f330002e8a70dfcc71ffd696f316c060:
+- red-build/src/engine/audit/step-audit-reducer.js
+- red-build/tests/unit/step-audit-reducer.test.js
+- חיבור בדיקות ה-reducer ל-npm test ול-test:unit.
+
+בביקורת הקוד נמצאו ונוקו over-classifications: היעלמות target לאחר ממצא פעיל מובילה ל-not-comparable; correction-reverted דורש active→absent→active יחד עם מעברי Ledger; side effect דורש שינוי capacity ו-sibling delta מזוהה.
+
+ב-commit 2bfb72450d9a0c81fa4609f943bc6d9acb67eda5 הורחב ה-delta:
+- textChanged בנפרד מ-restyle ומגאומטריה.
+- pageMoves לזיהוי מעבר של elementId יציב בין pageIds.
+- split/merge רק כאשר lineage מוכיח החלפה של ישויות קיימות בישויות חדשות, ולא על סמך annotation בודד.
+- serialization קנוני של undefined בתוך arrays.
+
+ה-reducer נשאר מבודד: אין import ב-pipeline/Worker, אין שינוי layout, ואין snapshots של מסמך אמיתי. נדרש adapter מהמודל הקיים, משום שה-Ledger הנוכחי מספק page מספרי ו-target טקסטואלי בלבד; הם אינם תחליף ל-pageId/elementId יציבים.
+
+### 2. תוצאות CI וגורם הכשל ב-11.11
+על HEAD 91b38c3ccdf83eca552d8fa3c6acd6104f59dc98:
+- rebuild-worker-bundles — success.
+- layout-invariants — success; בדיקת הקורפוס הגדול, ההרצה הדטרמיניסטית ו-C1–C12 עברו.
+- CI — failure; Full Math Audit — failure בניסיון הראשון.
+
+בדיקת job logs הוכיחה שהכשל היה בשלב התקנת dependencies דרך apt, עקב Temporary failure resolving מול azure.archive.ubuntu.com, archive.ubuntu.com ו-security.ubuntu.com. ה-jobs לא הגיעו להרצת בדיקות המנוע/עימוד. שני shards של CI בוטלו ב-fail-fast.
+
+ניסיון חוזר:
+- Full Math Audit, attempt 2 — success.
+- CI, attempt 2 — עדיין נכשל; יש לבדוק אם אותה תקלה תשתיתית חזרה ומה מצב ה-shards שלא רצו.
+- על HEAD החדש 2bfb7245 הופעלו מחדש CI, layout-invariants, full-math-audit ו-rebuild-worker-bundles (run IDs: 43068300000, 43068300033, 43068300037, 43068300102). בעת עדכון זה הריצות היו in progress; אין לסמן אותן כהצלחה עד לקבלת conclusion.
+
+### 3. גבול העבודה הבא
+1. למפות את מבני pages/columns/lines/notes וה-Ledger של RED כדי להחליט אם קיימים IDs יציבים או שצריך לייצר מזהי fragment/page סמנטיים.
+2. לכתוב adapter טהור שמקבל תוצאת RED plain-JSON ומפיק snapshots מנורמלים ל-reducer; לא להחדיר IDs על בסיס page index או טקסט משוער.
+3. לכתוב בדיקות adapter על model fixtures, כולל מעבר page, הערות, כותרות, עיטורים, full-width blocks ופיצול/מיזוג.
+4. רק לאחר התאמה מוכחת: לקשור operation/checkpoint ל-Ledger, ואז לשקול instrumentation opt-in.
+5. UI issue-centered נשאר לאחר ייצוב schema.
+
+אין שינוי parser, DP, typography, renderer או ברירות מחדל בסשן זה. כל חומרי הארכיון נשארו בלתי משתנים. P6/P7 נשארים מחוץ לתחום.

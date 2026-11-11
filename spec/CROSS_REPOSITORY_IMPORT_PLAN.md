@@ -138,3 +138,12 @@
 5. **Yellow diagnostics:** השוואת schema שדה-מול-שדה הושלמה ב-`spec/YELLOW_DIAGNOSTICS_CONTRACT_GAP.md`. מודולי המקור נשארים ארכיון; היישום העתידי יוגבל לשדות חסרים שהוכחו ולמערכת EventLog/Ledger היחידה.
 6. **Screenshot PDF:** ה-helper של Green אינו תואם ל-`diagnostics-v2`, כולל החרגות DOM קשיחות ומניח manifest שאינו נוצר כיום ב-RED. לא תיכתב שכבת PDF לפני producer/manifest של RED.
 7. **React/Kotlin/Rust:** תיעוד, ADRs וחוזי מקור נשמרו בארכיון; אין הצדקה להעתיק runtime זר לשפת/ארכיטקטורת RED.
+
+
+## 9. מצב עדכני — 11.11.2026 (מחליף את סדר Step-Audit הקודם)
+
+- שיטת Step-by-Step Audit ל-RED הוגדרה במסמך step-by-step-audit-Method.md.
+- trace-v2 capture metadata נוסף; reducer טהור הוסף ונבדק ב-unit tests. הוא מזהה text changes, page moves ו-lineage של split/merge באותו עמוד.
+- reducer אינו מחובר ל-pipeline ואינו משפיע על layout. אין עדיין adapter שמפיק מזהי page/element יציבים מה-page model האמיתי.
+- המשימה הבאה: מיפוי page/column/line/note model ו-Ledger; כתיבת adapter טהור ובדיקות adapter; לאחר מכן operation/checkpoint linkage; לבסוף instrumentation opt-in ו-Testing Tab issue-centered.
+- CI על HEAD 2bfb7245 הופעל מחדש; תוצאותיו מתועדות ב-WORKLOG ורק לאחר conclusion ניתן לסמן שערים כעוברים.
