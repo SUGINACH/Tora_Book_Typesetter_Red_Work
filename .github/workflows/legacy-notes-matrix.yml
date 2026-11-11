@@ -1,0 +1,26 @@
+name: legacy-notes-matrix
+
+on:
+  pull_request:
+    branches: [ main, work/session-04-heading-rollback-fix ]
+    paths:
+      - 'red-build/tests/e2e/s64-legacy-notes.test.js'
+      - 'red-build/src/engine/layout/legacy-imud-flow.js'
+      - 'red-build/package.json'
+      - '.github/workflows/legacy-notes-matrix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notes-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run Legacy/IMUD note path matrix
+        run: cd red-build && node tests/e2e/s64-legacy-notes.test.js
