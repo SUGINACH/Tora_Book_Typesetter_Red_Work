@@ -221,7 +221,9 @@ function createStepAuditModelAdapter(options = {}) {
         let sy = boxTop;
         const sw = sx != null && sr != null ? sr - sx : null;
         for (const line of span.lines || []) {
-          const h = (line.heightPx || 0) * (line.aqStretch || 1);
+          // geometry-projector projects spanning lines at raw heightPx; AQ is
+          // applied only to the regular column flow below.
+          const h = line.heightPx || 0;
           const row = addLine(elements, pageId, line,
             sx != null && sw != null && sy != null ? { x: sx, y: sy, w: sw, h } : null,
             'spanning:' + pageId, 'spanning-band:' + pageId);
@@ -620,7 +622,12 @@ function createStepAuditModelAdapter(options = {}) {
         const header = projection.header;
         const headerSlots = (header.slots || []).filter((slot) =>
           Number.isFinite(slot.x) && Number.isFinite(slot.w) && Number.isFinite(header.y));
-        const headerBox = null;
+        const headerBox = headerSlots.length ? {
+          x: Math.min(...headerSlots.map((slot) => slot.x)),
+          y: header.y,
+          w: Math.max(...headerSlots.map((slot) => slot.x + slot.w)) - Math.min(...headerSlots.map((slot) => slot.x)),
+          h: null
+        } : null;
         if (headerSlots.length) incomplete('header-line-box-height-not-explicit');
         addElement(elements, {
           elementId: 'running-header:' + pageId,
@@ -636,8 +643,9 @@ function createStepAuditModelAdapter(options = {}) {
             elementId: 'header-slot:' + pageId + ':' + slot.pos,
             role: 'header-slot',
             parentId: 'running-header:' + pageId,
-            geometry: null,
-            attributes: { pos: slot.pos, align: slot.align || null, sizePt: slot.sizePt || null, x: slot.x, y: header.y, w: slot.w },
+            geometry: [slot.x, header.y, slot.w].every(Number.isFinite)
+              ? { x: slot.x, y: header.y, w: slot.w, h: null } : null,
+            attributes: { pos: slot.pos, align: slot.align || null, sizePt: slot.sizePt || null },
             style: {},
             textDigest: digestText(slot.text || '')
           });
@@ -679,13 +687,14 @@ function createStepAuditModelAdapter(options = {}) {
         incomplete('header-separator-rect-not-present-in-model');
       }
       if (projection && projection.folio) {
+        incomplete('folio-line-box-height-not-explicit');
         addElement(elements, {
           elementId: 'folio:' + pageId,
           role: 'folio',
           parentId: pageId,
           geometry: [projection.folio.x, projection.folio.y, projection.folio.w].every(Number.isFinite)
-            ? { x: projection.folio.x, y: projection.folio.y, w: projection.folio.w, h: 16 } : null,
-          attributes: { text: projection.folio.text || '' },
+            ? { x: projection.folio.x, y: projection.folio.y, w: projection.folio.w, h: null } : null,
+          attributes: { text: projection.folio.text || '', sizePt: projection.folio.sizePt || null },
           style: {},
           textDigest: digestText(projection.folio.text || '')
         });

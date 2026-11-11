@@ -139,6 +139,49 @@ describe('StepAudit RED model adapter', () => {
     assertEq(colRule.geometry, { x: 403.75, y: 80, w: 2.5, h: 12 });
   });
 
+  it('does not apply AQ stretch to spanning line boxes and preserves the explicit band height', () => {
+    const adapter = createStepAuditModelAdapter();
+    const spanLine = line(10, 't10', 'כותרת בפס', { aqStretch: 2, heightPx: 20 });
+    const page = makePage(0, [[], []], {
+      spanning: { heightPx: 30, titleTopPadPx: 5, lines: [spanLine] }
+    });
+    const snap = adapter.snapshot({
+      pages: [page], stage: 'page-plan', seq: 1, settings: {},
+      evaluatedKindsByPage: { 'page-object-1': [] }
+    });
+    const band = snap.checkpoint.pages[0].elements.find((element) => element.role === 'spanning-band');
+    const lineElement = snap.checkpoint.pages[0].elements.find((element) => element.elementId === 'line-seq-10');
+    assertEq(band.geometry, { x: 60, y: 80, w: 680, h: 30 });
+    assertEq(lineElement.geometry, { x: 60, y: 80, w: 680, h: 20 });
+  });
+
+  it('preserves measured folio/header slot coordinates without inventing line-box heights', () => {
+    const adapter = createStepAuditModelAdapter({
+      projectPage: () => ({
+        header: { y: 50, slots: [{ pos: 'right', text: 'כותרת', x: 600, w: 120, sizePt: 9 }] },
+        folio: { x: 300, y: 1002, w: 20, text: '3', sizePt: 10 },
+        decorations: [], lines: [], footnotes: []
+      })
+    });
+    const page = makePage(0, [[], []], {
+      header: { separator: 'none', slots: { right: { text: 'כותרת' } } },
+      folioDisplay: '3'
+    });
+    const snap = adapter.snapshot({
+      pages: [page], stage: 'headers', seq: 1, settings: {},
+      evaluatedKindsByPage: { 'page-object-1': [] }
+    });
+    const elements = snap.checkpoint.pages[0].elements;
+    assertEq(elements.find((element) => element.role === 'header-slot').geometry,
+      { x: 600, y: 50, w: 120, h: null });
+    assertEq(elements.find((element) => element.role === 'running-header').geometry,
+      { x: 600, y: 50, w: 120, h: null });
+    assertEq(elements.find((element) => element.role === 'folio').geometry,
+      { x: 300, y: 1002, w: 20, h: null });
+    assert(snap.capture.reasons.includes('header-line-box-height-not-explicit'));
+    assert(snap.capture.reasons.includes('folio-line-box-height-not-explicit'));
+  });
+
   it('does not double-count endnote note records as body lines', () => {
     const adapter = createStepAuditModelAdapter();
     const note = { tokenId: 't31', noteIndex: 0, marker: '1', text: 'ביאור ארוך', heightPx: 44, colIdx: 0 };
