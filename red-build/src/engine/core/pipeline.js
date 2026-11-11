@@ -1062,65 +1062,106 @@ function typeset(rawText, settingsIn, env = {}) {
     ledger.transition(rec.issue_id, 'persists', 'render', 'word-multiset mismatch \u2014 token loss/duplication detected');
   }
 
-  // **P1-2: \u05d0\u05db\u05dc\u05d5\u05e1 parenRanges \u05de\u05de\u05e4\u05ea \u05d4\u05d4\u05d9\u05e7\u05e3** \u2014 \u05d4\u05d2\u05e0\u05ea paren-cross-boundary \u05d7\u05d9\u05d4
+  // P1-2: map parenthetical ranges after DP placement, using the source line
+  // index stamped at the point of placement (never inferred from page number/y).
   {
     let spanId = 0;
     for (const b of blocks) {
       if (b.kind !== 'paragraph' || !b.parenCharSpans || !b.parenCharSpans.length) continue;
       if (!b.flatWordOffsets || !b.flatWordOffsets.length) continue;
-      // \u05de\u05d9\u05e4\u05d5\u05d9 \u05d8\u05d5\u05d5\u05d7\u05d9 (...) \u05dc\u05de\u05d3\u05d3\u05d9 \u05de\u05d9\u05dc\u05d9\u05dd \u05d1\u05e8\u05e6\u05e3 \u05d4\u05d1\u05dc\u05d5\u05e7 (\u05e1\u05d3\u05e8 \u05de\u05e1\u05de\u05da, \u05dc\u05d0 \u05d7\u05d9\u05e4\u05d5\u05e9\u05d9\u05dd)
+
+      // Inline note refs inject marker/placeholder words that are not represented
+      // in flatWordOffsets. Refuse a guessed mapping until they have a parallel
+      // source-word index map.
+      if ((b.parts || []).some((part) => part.kind === 'note-ref')) {
+        eventLog.emit('scope-map', 'paren-range-unmapped', {
+          token: b.tokenId, reason: 'inline-note-ref-interleaves-source-word-index'
+        });
+        continue;
+      }
+      const outputWordCount = (b.lines || []).reduce((sum, line) => sum + (line.words || []).length, 0);
+      if (outputWordCount !== b.flatWordOffsets.length) {
+        eventLog.emit('scope-map', 'paren-range-unmapped', {
+          token: b.tokenId, reason: 'post-measure-word-count-differs-from-source',
+          sourceWords: b.flatWordOffsets.length, outputWords: outputWordCount
+        });
+        continue;
+      }
+
       const ranges = [];
       for (const sp of b.parenCharSpans) {
-        const startW = b.flatWordOffsets.find(x => x.at > sp.from && x.at < sp.to);
-        // **S6.0 (R2-M5):** find החזיר את המילה הראשונה בטווח (שהיא startW
-        // עצמו) ⇒ כל טווח סוגריים רב-מילים קרס למילה אחת והגנת
-        // paren-cross-boundary הייתה מתה. כעת נלקחת המילה ה**אחרונה** בטווח.
+        const startW = b.flatWordOffsets.find((x) => x.at > sp.from && x.at < sp.to);
         let endW = null;
         for (const off of b.flatWordOffsets) {
           if (off.at > sp.from && off.at < sp.to && off.at >= (startW ? startW.at : 0)) endW = off;
         }
-        if (startW && endW) ranges.push({ startWi: b.flatWordOffsets.indexOf(startW), endWi: b.flatWordOffsets.indexOf(endW) });
+        if (startW && endW) ranges.push({
+          startWi: b.flatWordOffsets.indexOf(startW),
+          endWi: b.flatWordOffsets.indexOf(endW)
+        });
       }
-      for (const r of ranges) {
-        // \u05de\u05d9\u05e4\u05d5\u05d9 \u05de\u05d3\u05d3\u05d9 \u05de\u05d9\u05dc\u05d4 \u05dc\u05e9\u05d5\u05e8\u05d5\u05ea \u05d4\u05d1\u05dc\u05d5\u05e7 \u2014 \u05d5\u05de\u05e9\u05dd \u05dc\u05de\u05e7\u05d5\u05dd \u05d1\u05e4\u05e8\u05d9\u05e1\u05d4
+
+      for (const range of ranges) {
         let acc = 0, startLine = -1, endLine = -1;
         for (let li = 0; li < b.lines.length; li++) {
           const len = (b.lines[li].words || []).length;
-          if (startLine < 0 && acc + len > r.startWi) startLine = li;
-          if (endLine < 0 && acc + len > r.endWi) endLine = li;
+          if (startLine < 0 && acc + len > range.startWi) startLine = li;
+          if (endLine < 0 && acc + len > range.endWi) endLine = li;
           acc += len;
         }
         if (startLine < 0 || endLine < 0) continue;
+
         const found = { start: null, end: null };
-        for (const pg of pages) {
-          for (let c = 0; c < pg.columns.length; c++) {
-            for (const ln of pg.columns[c]) {
-              const tok = ln.tokenId != null ? ln.tokenId : (ln.meta && ln.meta.tokenId);
-              if (tok !== b.tokenId) continue;
-              const lIdx = ln.meta && ln.meta.lineIdx != null ? ln.meta.lineIdx : null;
-              if (lIdx === null) continue;
-              if (lIdx === startLine) found.start = { page: pg.index, col: c };
-              if (lIdx === endLine) found.end = { page: pg.index, col: c };
-            }
+        const inspectPlacedLines = (page, lines, columnIndex) => {
+          for (const line of lines || []) {
+            const tokenId = line.tokenId != null ? line.tokenId : (line.meta && line.meta.tokenId);
+            const lineIdx = line.meta && line.meta.lineIdx;
+            if (tokenId !== b.tokenId || !Number.isInteger(lineIdx)) continue;
+            if (lineIdx === startLine) found.start = { page: page.index, col: columnIndex };
+            if (lineIdx === endLine) found.end = { page: page.index, col: columnIndex };
           }
+        };
+        for (const page of pages) {
+          inspectPlacedLines(page, page.spanning && page.spanning.lines, -1);
+          for (let ci = 0; ci < page.columns.length; ci++) inspectPlacedLines(page, page.columns[ci], ci);
         }
+
         if (found.start && found.end) {
           spanId++;
-          const host = pages.find(pg => pg.index === found.start.page);
+          const host = pages.find((page) => page.index === found.start.page);
           if (host) {
             host.parenRanges = host.parenRanges || [];
             host.parenRanges.push({
               id: `p${spanId}@${b.tokenId}`,
+              tokenId: b.tokenId,
               startPage: found.start.page, startCol: found.start.col,
               endPage: found.end.page, endCol: found.end.col
             });
           }
+        } else {
+          eventLog.emit('scope-map', 'paren-range-unmapped', {
+            token: b.tokenId, reason: 'placed-line-index-not-found',
+            startLine, endLine, foundStart: !!found.start, foundEnd: !!found.end
+          });
         }
       }
     }
-    if (spanId) eventLog.emit('scope-map', 'paren-ranges-populated', { count: spanId });
-  }
 
+    // The DP retreat loop ran before this post-layout mapping. Re-run ONLY
+    // the parenthesis predicate; do not mutate or re-run other protections.
+    const { CHECKS } = require('../layout/protections-matrix');
+    let violations = 0;
+    for (const page of pages) {
+      const pageViolations = CHECKS.parenConsistency(page, settings, ledger);
+      violations += pageViolations.length;
+      if (pageViolations.length) {
+        eventLog.emit('protections', 'paren-consistency-after-scope-map', {
+          page: page.index, count: pageViolations.length
+        }, page.index);
+      }
+    }
+    if (spanId) eventLog.emit('scope-map', 'paren-ranges-populated', { count: spanId, violations });
+  }
   // ---- ledger finalize + CP5 ----
   eventLog.emit('ledger-finalize', 'summary', ledger.summary());
   const finalHash = layoutHash(pages); // hash \u05e9\u05dc \u05d4\u05de\u05e6\u05d1 \u05d4\u05e1\u05d5\u05e4\u05d9 (\u05d3\u05d8\u05e8\u05de\u05d9\u05e0\u05d9\u05d6\u05dd \u05d1\u05d9\u05df\u05be\u05e8\u05d9\u05e6\u05d5\u05ea)

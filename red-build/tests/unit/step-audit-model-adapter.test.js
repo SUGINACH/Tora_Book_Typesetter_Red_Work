@@ -135,7 +135,7 @@ describe('StepAudit RED model adapter', () => {
     const fnRule = elements.find((element) => element.attributes.kind === 'fn-rule');
     const colRule = elements.find((element) => element.elementId === 'column-divider:page-object-1');
     assertEq({ x: fnRule.geometry.x, y: fnRule.geometry.y, w: fnRule.geometry.w }, { x: 196, y: 968, w: 408 });
-    assertClose(fnRule.geometry.h, 1.4666666666666666, 1e-12, 'diamond footnote rule ink height');
+    assert(Math.abs(fnRule.geometry.h - 1.4666666666666666) <= 1e-12, 'diamond footnote rule ink height');
     assertEq(colRule.geometry, { x: 403.75, y: 80, w: 2.5, h: 12 });
   });
 
@@ -181,6 +181,25 @@ describe('StepAudit RED model adapter', () => {
     assert(missing.capture.reasons.includes('evaluated-kinds-not-supplied-for-page'));
     const complete = adapter.snapshot({ pages: [page], stage: 'balance', seq: 2, settings: {}, evaluatedKindsByPage: new Map([['page-object-1', []]]) });
     assert(!complete.capture.reasons.includes('evaluated-kinds-not-supplied-for-page'));
+  });
+
+  it('maps a paren-cross-boundary Ledger target to its explicit semantic range element', () => {
+    const adapter = createStepAuditModelAdapter();
+    const pageA = makePage(0, [[line(1, 't7', 'תחילת סוגר')], []], {
+      parenRanges: [{ id: 'p1@t7', tokenId: 't7', startPage: 0, startCol: 0, endPage: 1, endCol: 1 }]
+    });
+    const pageB = makePage(1, [[], [line(2, 't7', 'סוף סוגר')]], { parenRanges: [] });
+    const ledger = { issues: new Map([['paren', {
+      issue_id: 'paren', kind: 'paren-cross-boundary', target: 'p1@t7', page: 0,
+      first_seen_stage: 'protections', status: 'persists', transitions: [], candidates: []
+    }]]) };
+    const snap = adapter.snapshot({
+      pages: [pageA, pageB], ledger, stage: 'protections', checkpointId: 'paren-1', seq: 1,
+      settings: {}, evaluatedKindsByPage: { 'page-object-1': ['paren-cross-boundary'], 'page-object-2': ['paren-cross-boundary'] }
+    });
+    assertEq(snap.issues[0].mapStatus, 'mapped');
+    assertEq(snap.issues[0].targetElementId, 'paren-range:page-object-1:p1@t7');
+    assertEq(snap.checkpoint.pages[0].elements.filter((element) => element.role === 'paren-range').length, 1);
   });
 
   it('does not map an opaque parenthetical target to page-flow', () => {

@@ -54,6 +54,10 @@ function targetToken(target) {
   return m ? m[1] : null;
 }
 
+function parenRangeTarget(target) {
+  return typeof target === 'string' && /^p\\d+@t\\d+$/.test(target) ? target : null;
+}
+
 function targetSequence(target) {
   if (typeof target !== 'string') return null;
   const m = target.match(/^(?:(?:page#|p)\d+)?@seq(\d+)$|^seq[:#](\d+)$/);
@@ -263,6 +267,24 @@ function createStepAuditModelAdapter(options = {}) {
           }
         }
       });
+
+      // A parenthesis range is a semantic cross-line relation rather than a text box.
+      for (const range of page.parenRanges || []) {
+        const rangeToken = range.tokenId || String(range.id || '').split('@').pop();
+        addElement(elements, {
+          elementId: 'paren-range:' + pageId + ':' + range.id,
+          role: 'paren-range',
+          parentId: 'block-fragment:' + pageId + ':' + rangeToken,
+          tokenId: rangeToken || null,
+          attributes: {
+            rangeId: range.id, startPage: range.startPage, startCol: range.startCol,
+            endPage: range.endPage, endCol: range.endCol
+          },
+          geometry: null,
+          style: {},
+          textDigest: digestText(range.id)
+        });
+      }
 
       // Logical paragraph/heading fragments are page-local containers. Individual
       // line-seq elements remain the cross-page identity used to detect moves.
@@ -779,6 +801,7 @@ function createStepAuditModelAdapter(options = {}) {
     const normalizedIssues = [];
     for (const issue of issueList) {
       const target = String(issue.target || '');
+      const parenTarget = parenRangeTarget(target);
       let resolvedPageId = typeof issue.pageId === 'string' ? issue.pageId : null;
       let resolvedTargetId = typeof issue.targetElementId === 'string' ? issue.targetElementId : null;
       let mapReason = null;
@@ -806,11 +829,23 @@ function createStepAuditModelAdapter(options = {}) {
       if (resolvedPageId) {
         const elems = elementsByPage.get(resolvedPageId) || [];
         if (resolvedTargetId) candidates = elems.filter((el) => el.elementId === resolvedTargetId);
+        else if (parenTarget) candidates = elems.filter((el) => el.role === 'paren-range' && el.attributes.rangeId === parenTarget);
         else if (targetSeq != null) candidates = elems.filter((el) => el.elementId === 'line-seq-' + targetSeq);
         else if (tokenId) candidates = elems.filter((el) => el.elementId === 'block-fragment:' + resolvedPageId + ':' + tokenId);
         else if (parsedPage && parsedPage.columnIndex != null) candidates = elems.filter((el) => el.elementId === 'column:' + resolvedPageId + ':' + parsedPage.columnIndex);
         else if (parsedPage) candidates = elems.filter((el) => el.elementId === 'page-flow:' + resolvedPageId);
         else candidates = [];
+      } else if (parenTarget) {
+        candidates = pageRows.flatMap((row) => (row.elements || [])
+          .filter((el) => el.role === 'paren-range' && el.attributes.rangeId === parenTarget)
+          .map((el) => ({ pageId: row.pageId, element: el })));
+        if (candidates.length === 1) {
+          resolvedPageId = candidates[0].pageId;
+          resolvedTargetId = candidates[0].element.elementId;
+          candidates = [candidates[0].element];
+        } else if (candidates.length > 1) {
+          mapReason = 'paren-range-id-matches-multiple-pages';
+        }
       } else if (targetSeq != null) {
         candidates = pageRows.flatMap((row) => (row.elements || [])
           .filter((el) => el.elementId === 'line-seq-' + targetSeq)
