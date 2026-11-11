@@ -51,7 +51,10 @@ function finiteOrNull(value) {
 }
 
 function normalizeGeometry(raw, capture) {
-  if (raw == null) return null;
+  if (raw == null) {
+    markIncomplete(capture, 'missing-element-geometry');
+    return null;
+  }
   if (!isPlainObject(raw)) {
     markIncomplete(capture, 'invalid-element-geometry');
     return null;
@@ -309,7 +312,16 @@ function filterSiblingDelta(delta, targetElementId) {
   if (!delta) return null;
   const clone = { ...delta };
   for (const type of CHANGE_TYPES) {
-    if (Array.isArray(clone[type])) clone[type] = clone[type].filter((item) => item.elementId !== targetElementId);
+    if (!Array.isArray(clone[type])) continue;
+    if (type === 'split' || type === 'merged') {
+      clone[type] = clone[type].map((item) => ({
+        ...item,
+        fromIds: (item.fromIds || []).filter((id) => id !== targetElementId),
+        toIds: (item.toIds || []).filter((id) => id !== targetElementId)
+      })).filter((item) => item.fromIds.length || item.toIds.length);
+    } else {
+      clone[type] = clone[type].filter((item) => item.elementId !== targetElementId);
+    }
   }
   return clone;
 }
@@ -321,59 +333,122 @@ function classifyIssue(issue, observations, targetResolved, pageResolved) {
   if (!pageResolved || !targetResolved) {
     return { verdict: 'not-comparable', reason: !pageResolved ? 'page-identity-unresolved' : 'target-identity-unresolved' };
   }
+
   if (status === 'correction-blocked') {
     const rejected = candidates.some((candidate) => candidate && candidate.accepted === false && candidate.reason);
     return rejected
       ? { verdict: 'correction-blocked', reason: 'ledger-has-rejected-candidate-with-reason' }
       : { verdict: 'unresolved', reason: 'correction-blocked-without-candidate-rejection-evidence' };
   }
-  if (status === 'correction-reverted' || transitions.some((t) => t && t.state === 'correction-reverted')) {
-    return { verdict: 'correction-reverted', reason: 'explicit-ledger-lifecycle' };
+
+  const activeIndexes = observations.map((o, i) => o.issueState === 'active' ? i : -1).filter((i) => i >= 0);
+  const firstActiveIndex = activeIndexes.length ? activeIndexes[0] : -1;
+
+  // Once a previously observed finding loses its page/target identity, the
+  // later checkpoint is not comparable. It is not "became observable later".
+  if (firstActiveIndex >= 0) {
+    for (let i = firstActiveIndex + 1; i < observations.length; i++) {
+      const later = observations[i];
+      if (later.pageState === 'page-not-present' || !later.targetPresent) {
+        return {
+          verdict: 'not-comparable',
+          reason: later.pageState === 'page-not-present'
+            ? 'page-disappeared-after-active-finding'
+            : 'target-disappeared-after-active-finding',
+          checkpointId: later.checkpointId
+        };
+      }
+    }
   }
+
+  // A causal rollback classification requires a comparable active -> absent
+  // -> active sequence plus the corresponding Ledger transitions.
+  for (let i = 0; i + 2 < observations.length; i++) {
+    const a = observations[i], b = observations[i + 1], c = observations[i + 2];
+    if (a.issueState !== 'active' || b.issueState !== 'absent' || c.issueState !== 'active') continue;
+    const hasResolved = transitions.some((t) => t && t.state === 'resolved');
+    const hasReintroduced = transitions.some((t) => t && t.state === 'reintroduced');
+    if (hasResolved && hasReintroduced && a.targetPresent && b.targetPresent && c.targetPresent) {
+      return {
+        verdict: 'correction-reverted',
+        reason: 'active-absent-active-with-ledger-resolution-and-reintroduction',
+        resolvedCheckpointId: b.checkpointId,
+        reintroducedCheckpointId: c.checkpointId,
+        reintroducedByOperationId: c.operationId || null
+      };
+    }
+  }
+  if (status === 'correction-reverted' || transitions.some((t) => t && t.state === 'correction-reverted')) {
+    return { verdict: 'unresolved', reason: 'correction-reverted-ledger-state-without-comparable-active-absent-active-proof' };
+  }
+
   if (status === 'competing-repair-side-effect') {
     const evidence = issue.causalEvidence;
-    const hasDependency = evidence && evidence.siblingElementId && evidence.capacityBefore != null && evidence.capacityAfter != null;
-    const changedSibling = hasDependency && observations.some((obs) =>
-      (obs.siblingDeltas || []).some((delta) => delta.elementId === evidence.siblingElementId)
+    const hasCapacityChange = evidence
+      && evidence.siblingElementId
+      && evidence.siblingElementId !== issue.targetElementId
+      && evidence.capacityBefore != null
+      && evidence.capacityAfter != null
+      && !sameData(evidence.capacityBefore, evidence.capacityAfter);
+    const changedSibling = hasCapacityChange && observations.some((obs) =>
+      (obs.siblingDeltas || []).some((delta) => delta && delta.elementId === evidence.siblingElementId)
     );
     return changedSibling
       ? { verdict: 'competing-repair-side-effect', reason: 'explicit-ledger-dependency-matches-sibling-delta' }
-      : { verdict: 'unresolved', reason: 'side-effect-status-without-matching-sibling-capacity-evidence' };
+      : { verdict: 'unresolved', reason: 'side-effect-status-without-changed-capacity-and-matching-sibling-delta' };
   }
 
-  const known = observations.filter((o) => o.issueState === 'active' || o.issueState === 'absent');
-  const pattern = known.slice(0, -2).some((o, i) =>
-    o.issueState === 'active'
-    && known[i + 1].issueState === 'absent'
-    && known[i + 2].issueState === 'active'
-  );
-  if (pattern) {
-    const resolved = transitions.some((t) => t && t.state === 'resolved');
-    const reintroduced = transitions.some((t) => t && t.state === 'reintroduced');
-    if (resolved && reintroduced) return { verdict: 'correction-reverted', reason: 'active-absent-active-with-ledger-resolution-and-reintroduction' };
-  }
-  for (let i = 1; i < known.length; i++) {
-    const before = known[i - 1], after = known[i];
-    if (before.issueState === 'absent' && after.issueState === 'active') {
-      if (!before.targetPresent || !after.targetPresent) {
-        return { verdict: 'became-observable-later', reason: 'target-not-present-at-earlier-comparable-evaluation' };
+  // Compare adjacent checkpoints. A checkpoint where the kind was not
+  // evaluated, or where the page/target did not yet exist, is not a clean state.
+  for (let i = 1; i < observations.length; i++) {
+    const before = observations[i - 1], after = observations[i];
+    if (after.pageState === 'page-not-present') {
+      if (before.issueState === 'absent' && !before.targetPresent) {
+        return { verdict: 'became-observable-later', reason: 'page-or-target-not-present-at-earlier-checkpoint', checkpointId: after.checkpointId };
       }
-      if (after.operationId) return { verdict: 'created-by-stage', reason: 'same-target-false-to-true-across-operation', operationId: after.operationId, checkpointId: after.checkpointId };
-      return { verdict: 'unresolved', reason: 'first-bad-checkpoint-has-no-operation-id' };
+      continue;
     }
+
+    if (before.issueState === 'absent' && after.issueState === 'active') {
+      if (before.pageState !== 'present' || !before.targetPresent) {
+        return { verdict: 'became-observable-later', reason: 'target-not-present-at-earlier-comparable-evaluation', checkpointId: after.checkpointId };
+      }
+      if (!after.targetPresent) {
+        return { verdict: 'not-comparable', reason: 'target-not-resolvable-at-first-bad-checkpoint', checkpointId: after.checkpointId };
+      }
+      if (after.operationId) {
+        return { verdict: 'created-by-stage', reason: 'same-target-false-to-true-across-operation', operationId: after.operationId, checkpointId: after.checkpointId };
+      }
+      return { verdict: 'unresolved', reason: 'first-bad-checkpoint-has-no-operation-id', checkpointId: after.checkpointId };
+    }
+
+    if ((before.pageState === 'page-not-present' || before.issueState === 'page-not-present' || before.issueState === 'not-evaluated')
+      && after.issueState === 'active') {
+      return { verdict: 'became-observable-later', reason: 'earlier-checkpoint-was-not-comparable-or-not-evaluated', checkpointId: after.checkpointId };
+    }
+
     if (before.issueState === 'active' && after.issueState === 'absent') {
-      if (after.operationId) return { verdict: 'resolved-by-stage', reason: 'same-target-true-to-false-across-operation', operationId: after.operationId, checkpointId: after.checkpointId };
+      if (!after.targetPresent) {
+        return { verdict: 'not-comparable', reason: 'target-not-resolvable-at-resolution-checkpoint', checkpointId: after.checkpointId };
+      }
+      if (after.operationId) {
+        return { verdict: 'resolved', reason: 'same-target-true-to-false-across-operation', operationId: after.operationId, checkpointId: after.checkpointId };
+      }
+      return { verdict: 'unresolved', reason: 'resolution-checkpoint-has-no-operation-id', checkpointId: after.checkpointId };
     }
   }
+
   if (status === 'resolved' || status === 'persists' || status === 'reintroduced') {
     return { verdict: status, reason: 'ledger-lifecycle-without-new-causal-transition' };
   }
-  if (observations.some((o) => o.issueState === 'not-evaluated' || o.issueState === 'page-not-present' || !o.targetPresent)) {
-    return { verdict: 'became-observable-later', reason: 'earlier-checkpoint-lacked-comparable-observation' };
+  if (observations.some((o) => o.issueState === 'not-evaluated' || o.issueState === 'page-not-present')) {
+    return { verdict: 'unresolved', reason: 'checkpoint-window-contains-unobservable-state-without-provable-first-observation' };
+  }
+  if (observations.length && observations.every((o) => o.issueState === 'active')) {
+    return { verdict: 'persists', reason: 'finding-remains-active-at-all-comparable-checkpoints' };
   }
   return { verdict: 'unresolved', reason: 'no-provable-before-after-transition' };
 }
-
 function makeIssueWindows(issues, checkpoints, pageDeltas, capture) {
   const allIssueFindings = new Map();
   for (const cp of checkpoints) {

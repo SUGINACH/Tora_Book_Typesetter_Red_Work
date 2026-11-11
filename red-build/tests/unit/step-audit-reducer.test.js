@@ -121,6 +121,42 @@ describe('StepAudit reducer — pure page/element deltas', () => {
     assertEq(result.issueWindows[0].causalAssessment.verdict, 'correction-reverted');
   });
 
+  it('does not call a disappeared target became-observable-later after an active finding', () => {
+    const active = page({ findings: [{ issueId: 'gone-1', kind: 'column-imbalance', targetElementId: 'body-1' }] });
+    const missing = page({ elements: [] });
+    const result = buildStepAudit({
+      checkpoints: [cp('cp1', 1, 'balance', [active], 'op-a'), cp('cp2', 2, 'page-plan', [missing], 'op-b')],
+      issues: [{ issue_id: 'gone-1', kind: 'column-imbalance', pageId: 'page-A', targetElementId: 'body-1', status: 'persists' }]
+    });
+    assertEq(result.issueWindows[0].causalAssessment.verdict, 'not-comparable');
+    assertEq(result.issueWindows[0].causalAssessment.reason, 'target-disappeared-after-active-finding');
+  });
+
+  it('does not classify correction-reverted without active-absent-active evidence', () => {
+    const active = page({ findings: [{ issueId: 'false-revert', kind: 'column-imbalance', targetElementId: 'body-1' }] });
+    const result = buildStepAudit({
+      checkpoints: [cp('cp1', 1, 'balance', [active], 'op-a')],
+      issues: [{
+        issue_id: 'false-revert', kind: 'column-imbalance', pageId: 'page-A', targetElementId: 'body-1', status: 'correction-reverted',
+        transitions: [{ state: 'created' }, { state: 'correction-reverted' }]
+      }]
+    });
+    assertEq(result.issueWindows[0].causalAssessment.verdict, 'unresolved');
+  });
+
+  it('does not classify a sibling side effect without an actual capacity change', () => {
+    const active = page({ findings: [{ issueId: 'side-1', kind: 'column-imbalance', targetElementId: 'body-1' }] });
+    const result = buildStepAudit({
+      checkpoints: [cp('cp1', 1, 'balance', [active], 'op-a'), cp('cp2', 2, 'refit', [active], 'op-b')],
+      issues: [{
+        issue_id: 'side-1', kind: 'column-imbalance', pageId: 'page-A', targetElementId: 'body-1',
+        status: 'competing-repair-side-effect',
+        causalEvidence: { siblingElementId: 'other-element', capacityBefore: 800, capacityAfter: 800 }
+      }]
+    });
+    assertEq(result.issueWindows[0].causalAssessment.verdict, 'unresolved');
+  });
+
   it('caps and ambiguous identities are explicit and never silently complete', () => {
     const crowded = page({ elements: [
       el('one', { x: 0, y: 0, w: 1, h: 1 }),
