@@ -115,6 +115,29 @@ describe('StepAudit RED model adapter', () => {
     assertEq(snap.capture.complete, true);
   });
 
+  it('matches model-projected ink bounds for double column rules and diamond footnote rules', () => {
+    const adapter = createStepAuditModelAdapter();
+    const note = { tokenId: 't3', noteIndex: 0, marker: '*', text: 'ביאור', heightPx: 32, lineH: 16 };
+    const page = makePage(0, [
+      [line(1, 't1', 'גוף')], [line(2, 't2', 'גוף נוסף')]
+    ], { footnotes: [note], fnReservedHeightPx: 32 });
+    const snap = adapter.snapshot({
+      pages: [page], stage: 'page-plan', checkpointId: 'rules-1', seq: 1,
+      settings: {
+        'footnote-columns': 1,
+        'footnote-separator-rule': 'diamond',
+        'column-divider-style': 'double',
+        'body-font-size-pt': 12
+      },
+      evaluatedKindsByPage: { 'page-object-1': [] }
+    });
+    const elements = snap.checkpoint.pages[0].elements;
+    const fnRule = elements.find((element) => element.attributes.kind === 'fn-rule');
+    const colRule = elements.find((element) => element.elementId === 'column-divider:page-object-1');
+    assertEq(fnRule.geometry, { x: 196, y: 968, w: 408, h: 1.4666666666666666 });
+    assertEq(colRule.geometry, { x: 403.75, y: 80, w: 2.5, h: 12 });
+  });
+
   it('does not double-count endnote note records as body lines', () => {
     const adapter = createStepAuditModelAdapter();
     const note = { tokenId: 't31', noteIndex: 0, marker: '1', text: 'ביאור ארוך', heightPx: 44, colIdx: 0 };

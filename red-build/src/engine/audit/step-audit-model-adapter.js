@@ -365,13 +365,21 @@ function createStepAuditModelAdapter(options = {}) {
           }
         });
         if (settings['footnote-separator-rule'] && settings['footnote-separator-rule'] !== 'none') {
+          const ruleStyle = settings['footnote-separator-rule'];
+          const ruleSpec = {
+            regular: { w: 0.75 }, circles: { w: 1.1 }, sparkle: { w: 1.1 },
+            star: { w: 0.75, double: 1.5 }, diamond: { w: 1.1, scaleX: 0.6 }
+          }[ruleStyle] || { w: 0.75 };
+          const inkW = ruleSpec.scaleX ? fullW * ruleSpec.scaleX : fullW;
+          const inkX = ruleSpec.scaleX ? left + (fullW - inkW) / 2 : left;
+          const inkH = Math.max(0.75, ruleSpec.w * (96 / 72) + (ruleSpec.double || 0));
           addElement(elements, {
             elementId: 'footnote-rule:' + pageId,
             role: 'divider',
             parentId: 'footnote-area:' + pageId,
-            geometry: { x: left, y: top, w: fullW, h: 0.75 },
-            attributes: { kind: 'fn-rule', style: settings['footnote-separator-rule'] },
-            style: { rule: settings['footnote-separator-rule'] },
+            geometry: { x: inkX, y: top, w: inkW, h: inkH },
+            attributes: { kind: 'fn-rule', style: ruleStyle },
+            style: { rule: ruleStyle },
             textDigest: digestText('')
           });
         }
@@ -430,12 +438,15 @@ function createStepAuditModelAdapter(options = {}) {
         if (h > 0) {
           const c1 = templateCols[1];
           const x = c1.x + c1.w + (tpl.gutter || 0) / 2;
+          const dividerStyle = settings['column-divider-style'];
+          const doubleOffset = dividerStyle === 'double' ? 1.5 : 0;
+          const inkW = Math.max(0.75, 0.75 * (96 / 72) + doubleOffset);
           addElement(elements, {
             elementId: 'column-divider:' + pageId,
             role: 'divider',
             parentId: pageId,
-            geometry: { x, y: boxTop, w: 1, h },
-            attributes: { style: settings['column-divider-style'] },
+            geometry: { x: x - inkW / 2, y: boxTop, w: inkW, h },
+            attributes: { style: dividerStyle },
             style: {},
             textDigest: digestText('')
           });
