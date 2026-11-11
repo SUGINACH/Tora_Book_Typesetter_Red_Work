@@ -16726,6 +16726,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
   const pages = [];
   let pageIdx = 0;
   let seqCounter = 0; // סדר הצבה — סדר קריאה (תיקון P0-3)
+  const sourceLineIndex = new WeakMap(); // source block line object -> stable block-local line index
   const lineH = Math.round(settings['body-font-size-pt'] * (96 / 72) * settings['body-line-height']);
   const imbMax = settings['imbalance-max-delta-px'];
 
@@ -16823,11 +16824,13 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
     const gap = meta.firstOfBlock ? blockGapPx(settings, lineH) : 0;
     let pendingGap = gap;
     for (const ln of lines) {
+      const lineIdx = sourceLineIndex.get(ln);
+      const lineMeta = Number.isInteger(lineIdx) ? { ...meta, lineIdx } : meta;
       let placed = false;
       for (let c = 0; c < cur.columns.length && !placed; c++) {
         const needPx = ln.heightPx + pendingGap - 0.5;
         if (colCapacity(cur.template, cur) - usedHeight(cur.columns[c], cur) >= needPx) {
-          cur.columns[c].push({ ...ln, meta, seq: seqCounter++ });
+          cur.columns[c].push({ ...ln, meta: lineMeta, seq: seqCounter++ });
           pendingGap = 0;
           placed = true;
         }
@@ -16835,7 +16838,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
       if (!placed) {
         flushPage();
         cur = newPage(meta.forceType || PAGE_TYPES.REGULAR);
-        cur.columns[0].push({ ...ln, meta, seq: seqCounter++ }); // טור חדש/עמוד חדש → ללא gap
+        cur.columns[0].push({ ...ln, meta: lineMeta, seq: seqCounter++ }); // טור חדש/עמוד חדש → ללא gap
         pendingGap = 0;
       }
     }
@@ -16942,6 +16945,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
   for (let bi = 0; bi < blocks.length; bi++) {
     const blk = blocks[bi];
     const next = blocks[bi + 1];
+    if (Array.isArray(blk.lines)) blk.lines.forEach((line, lineIdx) => sourceLineIndex.set(line, lineIdx));
 
     // **S10 (REQ-UI-03):** התקדמות שלב הפריסה — "עומד עמוד X מתוך כ־Y" (Y מוערך;
     // מעודכן לספירה הסופית בסיום ה‑DP). בדידות 32 בלוקים — אפס השפעה על הפריסה.
@@ -17014,7 +17018,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
         if (cur.spanning || cur.columns.some(c => c.length)) { flushPage(); cur = newPage(PAGE_TYPES.REGULAR); }
         const bandH = blk.lines.reduce((s, ln) => s + (ln.heightPx || 0), 0);
         cur.spanning = {
-          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part }, seq: seqCounter++ })),
+          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part, lineIdx: i }, seq: seqCounter++ })),
           heightPx: bandH,
           customStyle: cs
         };
@@ -17025,6 +17029,8 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
 
     // תקציב הערות לפני מיקום (F-17 probe==reserved, כולל מדיניות הערה ארוכה)
     if (blk.kind === 'paragraph') reserveNotes(blk);
+    // reserveNotes/rejectToBody may append a recovery line; refresh block-local indices.
+    if (Array.isArray(blk.lines)) blk.lines.forEach((line, lineIdx) => sourceLineIndex.set(line, lineIdx));
 
     // **03.11(ד) — span_1col של המקור ל-H3–H6 (mode=full-width):** עד כאן כותרת
     // שנמדדה ברוחב מלא (674px) הוצבה בטור של 270px — שורה ברוחב 471px בטור
@@ -17039,7 +17045,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
       if (!cur.spanning && cur.template.columns.length >= 2) {
         const bandH3 = blk.lines.reduce((s, ln) => s + (ln.heightPx || 0), 0);
         cur.spanning = {
-          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part }, seq: seqCounter++ })),
+          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part, lineIdx: i }, seq: seqCounter++ })),
           heightPx: bandH3,
           titleTopPadPx: 0,
           orn: null
@@ -17070,7 +17076,7 @@ function planPages(blocks, settings, eventLog, ledger = new Ledger(), env = {}) 
         const topPad = orn && orn.scope && orn.scope.signTop ? orn.topPx : 0;
         const bottomPad = orn && orn.scope && orn.scope.signBottom ? orn.bottomPx : 0;
         cur.spanning = {
-          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part }, seq: seqCounter++ })),
+          lines: blk.lines.map((ln, i) => ({ ...ln, meta: { tokenId: blk.tokenId, firstOfBlock: i === 0, docPart: blk.part, lineIdx: i }, seq: seqCounter++ })),
           heightPx: topPad + bandH + bottomPad,
           titleTopPadPx: topPad,
           orn: orn || null
