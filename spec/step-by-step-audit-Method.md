@@ -443,7 +443,7 @@
 - ה-pipeline מחשב parenSpans גם כאשר paren-style-scale=1. הסקייל עדיין קובע רק אם PAREN_SENTINEL משפיע על המדידה; בדיקת הגבול המבנית אינה תלויה בו.
 - לכל מילה בטווח שניתן למיפוי מוצמד sourceWordRef={tokenId,wordIndex}. ה-reference מועבר יחד עם מילה ש-fixDropWordInColumns מעביר לשורה הבאה. לכן אין הסתמכות על lineIdx בלבד לאחר תיקון שורה.
 - לאחר יצירת page.parenRanges, ה-pipeline מריץ פעם אחת רק את CHECKS.parenConsistency; הוא אינו מריץ שוב את שאר ההגנות ואינו משנה גאומטריה.
-- ה-Ledger target בפועל הוא paren@pN@tN; ה-adapter מזהה אותו במדויק ומקשר אותו לאלמנט סמנטי paren-range.
+- רשומת Ledger שומרת target בפורמט pN@tN (ה-prefix paren@ קיים רק ב-violation object שמוחזר מ-CHECKS). ה-adapter קורא את רשומת ה-Ledger ומזהה את pN@tN במדויק.
 
 כאשר יש note-ref שמשלב מילים חיצוניות, או שמספר המילים לאחר עיבוד שונה ממספר מילות המקור, המיפוי נדחה ונרשם paren-range-unmapped. זה מכוון: אין התאמה משוערת.
 

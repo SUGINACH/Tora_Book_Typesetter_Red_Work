@@ -193,7 +193,7 @@ The field-by-field comparison is recorded in `spec/YELLOW_DIAGNOSTICS_CONTRACT_G
 - RED model adapter implemented and unit-tested: red-build/src/engine/audit/step-audit-model-adapter.js.
 - Adapter maps live page objects, columns, line seqs, footnote/endnote fragments, side notes, decorations, dividers, TOC/custom/shaar elements, header/folio projection and Ledger records. Missing source identity or geometry is surfaced as incomplete; it is not guessed.
 - Parenthesis mapping now has a focused runtime path: DP line indexes, per-word source refs, source refs carried through drop-word repair, semantic paren range elements and a post-map-only parenConsistency check.
-- The actual Ledger target is paren@pN@tN; matching this exact prefix is covered by unit and E2E tests.
+- The Ledger record stores target pN@tN; CHECKS violation objects expose paren@pN@tN. The adapter consumes the Ledger record target, and unit/E2E tests cover that exact contract.
 - The generic all-stage checkpoint producer, operationId linkage across every mutation, reducer integration for a full real run, Testing Tab UI and full audit stress test remain open.
 - The current changes do not change line breaking, page balancing, measurement or renderer geometry. The added source-word identity is omitted from layout/body geometry hashes.
 

@@ -56,7 +56,9 @@ function targetToken(target) {
 
 function parenRangeTarget(target) {
   if (typeof target !== 'string') return null;
-  const match = target.match(/^paren@(p\d+@t\d+)$/);
+  // Ledger.create stores p.id (pN@tN); the separate CHECKS violation target
+  // is prefixed with paren@. The adapter consumes the Ledger record, not that violation.
+  const match = target.match(/^(p\d+@t\d+)$/);
   return match ? match[1] : null;
 }
 

@@ -156,6 +156,6 @@ The pure reducer and RED model adapter are implemented and covered by unit tests
 - per-word provenance refs follow words through drop-word repair;
 - parenthesis ranges are built from final placed word locations;
 - only the parenthesis boundary predicate is re-run after range creation;
-- the real Ledger target paren@pN@tN maps to a semantic paren-range element.
+- the Ledger record target pN@tN (distinct from the CHECKS violation target paren@pN@tN) maps to a semantic paren-range element.
 
 No general all-stage checkpoint instrumentation is active. No all-mutation operationId linkage or issue-centered Testing Tab view exists yet. The next Step-Audit task is the pure checkpoint producer/caller contract (page model + evaluatedKinds + Ledger snapshot + operation metadata), followed by opt-in capture and no-op geometry/hash proof. Do not infer missing source identities, and do not add DOM measurements.

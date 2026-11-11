@@ -3058,7 +3058,7 @@ PR #6 נשאר פתוח מול `main`, לא מוזג, ו-GitHub דיווח `merg
 העבודה נמשכה ב-work/reference-intent-clarification; PR #6 נשאר פתוח ולא מוזג. ה-HEAD בעת כתיבת עדכון זה הוא 00eeb8546eb79fdcc2c5f3ff2a7252c5ed3118ee. אין מיזוג ל-main ואין שינוי לריפו RED המקורי.
 
 ### 2. תיקון target בפורמט Ledger בפועל
-ה-Ledger יוצר target מסוג paren@pN@tN מתוך p.id. ה-adapter זיהה קודם רק pN@tN; זה תוקן ב-commit 6d34c38f. בדיקת היחידה וה-E2E עודכנו לצורת target האמיתית.
+ה-Ledger.create שומר ברשומה target=pN@tN (ה-prefix paren@pN@tN שייך ל-violation object שמוחזר מ-CHECKS, לא לרשומת ה-Ledger). בתחילה זוהו שני הפורמטים בטעות כזהים; התיקון הסופי מחזיר את ה-adapter להתאמה ל-pN@tN ומותאם מחדש ב-unit/E2E.
 
 ### 3. שימור מקור מילים אחרי תיקון שורה
 נוסף ב-commit 99249ef8:
@@ -3087,3 +3087,7 @@ PR #6 נשאר פתוח מול `main`, לא מוזג, ו-GitHub דיווח `merg
 5. UI issue-centered יישאר מחוץ לשלב זה.
 
 P6/P7 אינם בשימוש כקריטריוני קבלה; לא שונו parser, KP/DP line-breaking, typography או page-balancing decisions. כל חומרי archive נשארו ללא שינוי.
+
+## Session 15a — הבהרת צורת ה-target של סוגריים ב-Ledger (12.11.2026)
+
+קריאה ישירה של protections-matrix.js ו-ledger.js הבהירה את ההבחנה: CHECKS.parenConsistency מחזיר violation.target=paren@p.id, אך ledger.create מקבל ושומר p.id בלבד. לכן issue.target ברשומת Ledger הוא pN@tN. ה-adapter, שמקבל רשומות Ledger, חייב להתאים ל-pN@tN; אין להחיל עליו את prefix paren@. תיקון זה הוחל בקוד ובבדיקות וה-E2E עודכן. אין שינוי ב-CHECKS או במבנה Ledger.
