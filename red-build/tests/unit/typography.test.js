@@ -105,6 +105,21 @@ describe('REQ-LB-03 protectors (NBSP gluing)', () => {
     const words = protectWords([`${hugeA}\u00A0${hugeB}`, 'רגיל'], W, COLW);
     assert(words.every(w => !w.includes('\u00A0')), 'gluing cancelled for oversized pair');
   });
+  it('moves per-word source references with a transferred drop word', () => {
+    const cols = [
+      [{ words: ['גוף'], sourceWordRefs: [{ tokenId: 't1', wordIndex: 4 }] },
+       { words: ['א'], sourceWordRefs: [{ tokenId: 't1', wordIndex: 5 }] }],
+      [{ words: ['המשך', 'טקסט'], sourceWordRefs: [{ tokenId: 't2', wordIndex: 0 }, { tokenId: 't2', wordIndex: 1 }] }]
+    ];
+    const fixed = fixDropWordInColumns(cols, 5, { measure: (t) => t.length * 6, colW: 200 });
+    assert(fixed, 'drop-word repair applied');
+    assertEq(cols[1][0].sourceWordRefs, [
+      { tokenId: 't1', wordIndex: 5 },
+      { tokenId: 't2', wordIndex: 0 },
+      { tokenId: 't2', wordIndex: 1 }
+    ], 'source word identity follows the moved word');
+  });
+
   it('fixDropWordInColumns pulls short dropper into next column (S5.2: only when the merged line fits)', () => {
     const measure = (t) => t.length * 6; // מודד סינתטי דטרמיניסטי
     const cols = [[{ words: ['א', 'ב'] }, { words: ['קצר'], widthPx: 42 }], [{ words: ['המשך', 'טקסט'], widthPx: 100 }]];

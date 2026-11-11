@@ -104,6 +104,9 @@ function fixDropWordInColumns(columnLines, minLen = 3, opts = {}) {
       if (mergedW == null || mergedW > colW - fitEps) continue; // לא נכנס — המילה נשארת (status quo)
       // משלבים את המילה הנופלת לתוך השורה הראשונה של הטור הבא (גרירה)
       nextFirst.words.unshift(...last.words);
+      if (Array.isArray(last.sourceWordRefs) || Array.isArray(nextFirst.sourceWordRefs)) {
+        nextFirst.sourceWordRefs = [...(last.sourceWordRefs || []), ...(nextFirst.sourceWordRefs || [])];
+      }
       nextFirst.widthPx = mergedW; // רוחב השורה אחרי המיזוג (נצרך ל-runt/balance)
       lines.pop();
       fixed = true;
