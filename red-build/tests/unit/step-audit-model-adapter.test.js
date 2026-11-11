@@ -134,7 +134,8 @@ describe('StepAudit RED model adapter', () => {
     const elements = snap.checkpoint.pages[0].elements;
     const fnRule = elements.find((element) => element.attributes.kind === 'fn-rule');
     const colRule = elements.find((element) => element.elementId === 'column-divider:page-object-1');
-    assertEq(fnRule.geometry, { x: 196, y: 968, w: 408, h: 1.4666666666666666 });
+    assertEq({ x: fnRule.geometry.x, y: fnRule.geometry.y, w: fnRule.geometry.w }, { x: 196, y: 968, w: 408 });
+    assertClose(fnRule.geometry.h, 1.4666666666666666, 1e-12, 'diamond footnote rule ink height');
     assertEq(colRule.geometry, { x: 403.75, y: 80, w: 2.5, h: 12 });
   });
 
