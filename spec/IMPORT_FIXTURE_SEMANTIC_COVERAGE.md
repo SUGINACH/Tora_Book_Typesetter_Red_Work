@@ -100,7 +100,7 @@ RED כבר מחזיק EventLog, Ledger, lifecycle, evidence של candidates/capa
 
 ### 5.3 Yellow diagnostics
 
-מודולי Yellow נשארים ארכיון. נדרש מיפוי שדה-מול-שדה בין `engine-inputs`, `engine-trace`, `engine-diagnostics` לבין EventLog, Ledger ו-`diagnostics-v2` של RED. כל שדה שכבר קיים יקבל הפניה לקוד/בדיקה; שדה חדש יישקל רק אם יש לו צרכן, משמעות lifecycle ובדיקת negative control. אין להעתיק workflow, globals או סביבת iframe.
+מיפוי השדות הושלם בסבב ראשון; ראו `spec/YELLOW_DIAGNOSTICS_CONTRACT_GAP.md`. מודולי Yellow נשארים ארכיון. המיפוי מזהה פער של run-input manifest (settings/fonts), סימון מפורש של trace disabled/completeness, וקישור issue↔operation/sibling-deltas. אין להעתיק workflow, globals או סביבת iframe; כל הרחבה תיעשה במבני EventLog/Ledger הקיימים ועם negative controls.
 
 ## 6. סדר עבודה מומלץ
 

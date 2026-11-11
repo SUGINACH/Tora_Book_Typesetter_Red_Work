@@ -58,7 +58,7 @@
 | Green `tools/build_layout_issue_screenshot_report.py` | איגוד צילומי ממצאים לדוח PDF ול-manifest | RED אינו מפיק כרגע את אותו screenshot manifest; הקוד דורש ReportLab, ויש בו הנחות/החרגות עמודים ישנות | להגדיר תחילה manifest יציב של RED, להסיר hard-coded page exclusions, להגן על נתיבי קבצים, ולבודד תלות ReportLab כאופציונלית |
 | Gold `scripts/generate-issues-pdf.js` | הפקת דוח ממצאים | תלוי במבנה issue-report הישן | להשוות schema, ואז לכתוב adapter שקורא את report-schema של RED |
 | Gold `scripts/step-by-step-audit.js` | חקירת השלב שבו ממצא נוצר/נפתר/בוטל וההשפעה על רכיבי עמוד אחרים | RED כבר כולל EventLog/Ledger/trace; יש סכנת יצירת מערכת שנייה | gap analysis מול ה-trace הקיים; לייבא רק שדות/מצבי lifecycle/דוחות שחסרים, עם מודל אירועים יחיד |
-| Yellow `engine-inputs.js`, `engine-trace.js`, `engine-diagnostics.js` | חוזי snapshots, inputs, diagnostics ו-event details | חפיפה לכאורה למודולי RED | השוואת schema שדה-שדה; להוסיף רק שדה או מצב שחסר בפועל |
+| Yellow `engine-inputs.js`, `engine-trace.js`, `engine-diagnostics.js` | חוזי snapshots, inputs, diagnostics ו-event details | הושלמה השוואת חוזים: settings/font run manifest חסר; trace verbosity/completeness metadata חסר; issue-centric element/sibling deltas חסרים. | המקור נשאר ארכיון; ראו `spec/YELLOW_DIAGNOSTICS_CONTRACT_GAP.md`. להוסיף רק הרחבות ל-EventLog/Ledger הקיימים. |
 | Gold `audit-expansion.js`, `audit-text-integrity.js` | הרחבת סוגי ממצאים ושלמות תוכן | RED כבר מפעיל scanners, content preservation ו-negative controls | למפות סוגי audit מול `red-build/src/audit/**` ולכתוב negative controls לפני הוספה |
 
 ### 4.2 כלים שלא יועתקו כקובץ ישן
@@ -74,7 +74,7 @@
 2. **מטריצת כיסוי סמנטי — הושלמה בסבב ראשון:** `spec/IMPORT_FIXTURE_SEMANTIC_COVERAGE.md` ממפה את 11 קובצי React line-battery, עשרת Gold triggers וסוויטת IMUD מול בדיקות RED. מועמדי הפער מסומנים כמועמדים בלבד, לא כבאגים.
 3. **בדיקות RED-native ממוקדות:** לבדוק תחילה BiDi מעורב, ניקוד/טעמים, מקפים ורצפי whitespace; בנוסף לבדוק אם דרושות בדיקות חיוביות נפרדות ל-page-underfill ול-sparse-line. כל fixture ייכתב בתחביר RED ויעבור D-100. אין להריץ את קובצי המקור הישנים.
 4. **Step-by-step audit:** למפות את ה-EventLog/Ledger/trace הקיימים ולתכנן reducer טהור של snapshots/deltas. אין logger שני ואין DOM snapshot במסלול הרגיל.
-5. **Yellow/Gold diagnostic contracts:** להשלים השוואת schema שדה-מול-שדה. להוסיף רק שדות/מצבים חסרים שהוכחו, עם negative controls.
+5. **Yellow/Gold diagnostic contracts — מיפוי הושלם:** ראו `spec/YELLOW_DIAGNOSTICS_CONTRACT_GAP.md`. הפערים המוכחים/חלקיים הם Run Input Manifest, metadata של trace disabled/completeness וקישור issue↔operation/sibling-deltas. היישום ייעשה כתוספת למבנים הקיימים, עם negative controls.
 6. **Screenshot report:** אין כרגע producer של screenshots/manifest ב-RED. תחילה יש להגדיר manifest ו-producer של RED; רק לאחר מכן לכתוב PDF builder מוגן ועצמאי.
 7. **מנוע:** לפתוח שינוי parser/layout/typography רק לאחר בדיקה RED-native שמוכיחה פער ומגדירה את תחום ההשפעה. אין להעתיק runtime ממאגרים אחרים.
 
@@ -117,6 +117,7 @@
 - קיימים גם 9 עותקי נתיב כפולים עם Git blob זהה, מדריך מקומי אחד לסוויטת IMUD ו-README האינדקס; בסך הכול 89 קבצים בעץ הארכיון.
 - README הארכיון הוא אינדקס provenance ברמת קובץ: repository/ref, commit מקור, נתיב מקורי ו-Git blob ID. שלושת המקורות הנוספים אומתו מול ה-blob בקומיט המקור; תשעת העותקים הכפולים הושוו ל-blob של הקובץ הקנוני. אין להפוך אותם לקוד פעיל.
 - מטריצת הכיסוי הסמנטי של חומרי React/IMUD/Gold מול בדיקות RED מתועדת ב-`spec/IMPORT_FIXTURE_SEMANTIC_COVERAGE.md`; היא אינה מחברת את חומרי הארכיון ל-CI.
+- מיפוי חוזי Yellow מול EventLog/Ledger/diagnostics-v2 מתועד ב-`spec/YELLOW_DIAGNOSTICS_CONTRACT_GAP.md`; הוא אינו מייבא או מריץ את מודולי המקור.
 - סוויטת IMUD: baseline הנעול מכיל **38 רשומות scenario**. ה-README המקורי אומר 21 — נתון stale ביחס ל-baseline בקומיט המקור הנעול. לא שינינו את המקור; תיעדנו את הסתירה ב-README הארכיוני.
 - הייבוא אינו מעיד שכל חמשת המאגרים ההיסטוריים הועברו בשלמותם. זהו ארכיון ממוקד של רכיבים, תיעוד, harnesses ו-fixtures שנבחרו; יתר הקבצים/היסטוריית הריפו לא הועתקו.
 
@@ -133,6 +134,6 @@
 2. **React/IMUD/Gold — סקר סמנטי ראשון הושלם:** ראו `spec/IMPORT_FIXTURE_SEMANTIC_COVERAGE.md`. הקבצים הישנים נשארים ארכיון; רק מועמדים לפער ייהפכו לנגזרות RED לאחר בדיקת תחביר ו-D-100.
 3. **Gold source syntax:** התחביר `כותרת N מספר K - ...` אינו מזוהה על ידי ה-lexer של RED, המקבל `כותרת N - ...`. בקובץ `test-all-triggers.txt` נמצא גם רצף כותרות H3 ללא גוף. לכן אין להריץ/לייבא את המקור ישירות.
 4. **Step-by-step audit:** נותר פער של snapshots/deltas מלאים של רכיבי העמוד והאחים בחלון issue-centric. להתחיל במיפוי שדות וב-reducer טהור על אירועי RED; אין ליצור trace שני.
-5. **Yellow diagnostics:** נותרה השוואת schema שדה-מול-שדה. מודולי המקור יישארו ארכיון עד שיוכח שדה חסר עם צורך ובדיקה.
+5. **Yellow diagnostics:** השוואת schema שדה-מול-שדה הושלמה ב-`spec/YELLOW_DIAGNOSTICS_CONTRACT_GAP.md`. מודולי המקור נשארים ארכיון; היישום העתידי יוגבל לשדות חסרים שהוכחו ולמערכת EventLog/Ledger היחידה.
 6. **Screenshot PDF:** ה-helper של Green אינו תואם ל-`diagnostics-v2`, כולל החרגות DOM קשיחות ומניח manifest שאינו נוצר כיום ב-RED. לא תיכתב שכבת PDF לפני producer/manifest של RED.
 7. **React/Kotlin/Rust:** תיעוד, ADRs וחוזי מקור נשמרו בארכיון; אין הצדקה להעתיק runtime זר לשפת/ארכיטקטורת RED.

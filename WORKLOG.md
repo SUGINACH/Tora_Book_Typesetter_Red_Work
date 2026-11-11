@@ -2957,3 +2957,33 @@ PR #6 נשאר פתוח מול `main`, לא מוזג, ו-GitHub דיווח `merg
 ### 4. גבול השינויים
 
 במהלך Session 11 לא שונו parser, typography, planner, renderer, Worker או settings runtime. לא הורצו legacy harnesses ולא חוברו fixtures ארכיוניים ל-CI. השינויים הם מסמכי תכנון/כיסוי בלבד; המקורות הארכיוניים נשארו byte-identical.
+
+
+## Session 12 — השלמת Yellow contract gap analysis (11.11.2026)
+
+### 1. אימות בסיס
+ה-HEAD הקודם `13c142360abeff4b68c8121a6286bd5183bca4d5` עבר את כל ארבעת ה-workflows:
+- CI — `42939104860`, success.
+- layout-invariants — `42939106743`, success.
+- rebuild-worker-bundles — `42939105044`, success.
+- full-math-audit — `42939104870`, success.
+
+### 2. מיפוי Yellow
+נוצר `spec/YELLOW_DIAGNOSTICS_CONTRACT_GAP.md`. המיפוי קובע:
+- settings אינם נקראים מ-DOM במהלך RED typeset; ה-pipeline מעתיק את ברירות המחדל וה-overrides בתחילת run. לכן אין לייבא `EngineInputs.beginRun/endRun` או frozen DOM controls.
+- חסר fingerprint קנוני ברמת הריצה ל-settings האפקטיביים, וכן manifest ברור של גופנים שנדרשו/נרשמו/שימשו ומה נכשל או נפל ל-fallback.
+- `contentHashIn` הוא hash של token model לאחר parsing/normalization, לא hash של מקור גולמי.
+- EventLog/Ledger/diagnostics-v2 קיימים ומשמשים מקור אמת יחיד; Yellow's global wrappers ו-DOM rectangles אינם מתאימים.
+- קיים פער שקיפות ספציפי: `trace-verbosity=off` מחזיר events ריקים ללא metadata מפורש שמבדיל איסוף כבוי מאיסוף שלם ללא אירועים.
+- חסר חיבור issue-centric בין finding ל-operation/checkpoint ול-deltas של יתר רכיבי אותו עמוד. זהו הפער העיקרי של step-by-step audit.
+
+### 3. תכנית יישום מדורגת
+ההמלצה היא להוסיף ל-RED בלבד ובסדר הבא:
+1. metadata ל-`trace-v2` שמציין recording/verbosity/completeness.
+2. Run Input Manifest טהור עם canonical settings hash ו-font manifest.
+3. StepAudit reducer טהור על snapshots/deltas ומקרי identity/split/merge.
+4. רק אחר כך operation/checkpoint IDs וקישור לממצאי Ledger.
+5. instrumentation opt-in של מודל העמוד רק אם ה-reducer מוכיח שהאירועים הקיימים אינם מספיקים.
+6. תצוגת issue-centered ב-Testing Tab לאחר ייצוב הסכמה.
+
+אין להוסיף Yellow runtime, global monkey-patching או DOM snapshots. אין שינוי parser/DP/renderer/Worker בסשן זה; מסמכי המקור וה-fixtures נשארו בלתי משתנים.

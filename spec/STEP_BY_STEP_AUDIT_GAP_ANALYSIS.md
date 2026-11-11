@@ -1,6 +1,6 @@
 # Gap analysis — cross-repository imports and RED step-by-step audit
 
-> **Snapshot:** 2026-11-10  
+> **Snapshot:** 2026-11-11  
 > **Target:** `SUGINACH/Tora_Book_Typesetter_Red_Work` / `work/reference-intent-clarification`  
 > **Scope:** import/adoption boundary and the specific missing diagnostic capability from Gold/Orange/Yellow/Green.  
 > **Safety:** this document does not change the typesetting engine, active settings, renderer, parser, DP, or Worker.
@@ -130,7 +130,7 @@ This structure satisfies the user's need to see both the target status and all o
 
 | Component | Current status | Safe next step | Not permitted yet |
 |---|---|---|---|
-| Makom Bina v20.5 data | Four 249-key JSON files exist at `red-build/ui/assets/imud/presets/makom-bina-v20.5/`; default JSON equals the existing fixture; three sets differ from the regular sets. The isolated preset registry and preview/apply picker already exist. | Data import completed; integration test added for all four files, source metadata, complete disposition and isolated paths. A path-normalization assertion was corrected in commit `31e7b4c`; verify the rerun before calling the test green. | Do not silently make it default, overwrite regular sets, or route it through the default loader without a distinct source path |
+| Makom Bina v20.5 data | Four 249-key JSON files exist at `red-build/ui/assets/imud/presets/makom-bina-v20.5/`; default JSON equals the existing fixture; three sets differ from the regular sets. The isolated preset registry and preview/apply picker already exist. | Data import and integration test are verified; the decoded-path assertion was corrected in `31e7b4c`; all four workflows passed on HEAD `13c1423`. | Do not silently make it default, overwrite regular sets, or route it through the default loader without a distinct source path |
 | Gold trigger corpus | Ten original text files are archived separately under `red-build/tests/fixtures/legacy-trigger-corpus/gold-v21/` | Review each candidate for current D-100 structure and convert only useful cases into new RED-native fixtures under a different path | Do not run legacy files unchanged or add them to CI |
 | React line-battery | Eleven short raw inputs are in the source archive, not in the active corpus | Select cases as semantic input tests (Unicode/BiDi, note-brackets, empty lines, hyphens, long word, niqqud, parentheses, whitespace) only where RED coverage is absent | Do not treat line outputs, line counts or historical line choices as expected values |
 | Green screenshot-to-PDF helper | Original script and fixtures are archived | Define a RED screenshot manifest and write a separate adapter that accepts only that schema; validate paths and remove hard-coded exclusions | Do not run the old helper directly against RED or make it a CI dependency |
@@ -144,7 +144,7 @@ This structure satisfies the user's need to see both the target status and all o
 The current safe imports (JSON/text/documents) were completed without modifying the active engine. For future changes:
 
 1. **No-code mapping first:** the source inventory is now documented; keep the 78 unique source files and their archive copies immutable.
-2. **Preset UI adapter:** completed by the pre-existing isolated registry/picker and the new data files; verify the corrected integration-test run. No layout-engine change was needed.
+2. **Preset UI adapter:** complete and CI-verified; the pre-existing isolated registry/picker consumes the imported files. No layout-engine change was needed.
 3. **Input fixtures:** promote only D-100-valid RED-native derivatives and add focused semantic tests; no full-corpus run for every fixture edit.
 4. **Screenshot report adapter:** first validate its standalone manifest reader/writer on synthetic screenshots; keep it out of the runtime and default CI until proven useful.
 5. **Step-audit pure model:** implement a deterministic snapshot/delta reducer over already-serialized page models, with unit tests only; no pipeline instrumentation yet.
@@ -156,3 +156,15 @@ The user requested prioritizing safe work and avoiding repeated slow tests. Acco
 ## 7. P6/P7 freeze
 
 P6/P7 have no active meaning in this project stage. No test, calculation, score, report, task or matching against historical paragraph/word/line sequences may be created or run. The old data and scripts remain archived only. This restriction supersedes any older work-log, issue-register, decision or planning text.
+
+
+## 8. Yellow V22 contract review — 11.11.2026
+
+The field-by-field comparison is recorded in `spec/YELLOW_DIAGNOSTICS_CONTRACT_GAP.md`. The conclusions relevant to the step audit are:
+
+- RED's per-run effective settings are copied at entry to `typeset`; settings are not read from live DOM controls. Yellow's frozen-control snapshot and `derivedChanged` mechanism are therefore not to be ported.
+- RED has a static settings registry contract (control/key/consumer/effect-test), but does not produce a canonical per-run `settingsHash` or actual-used-settings hash. This is a potential Run Input Manifest addition, not a need to instrument all DOM reads.
+- RED registers font bytes through `MeasureAPI` and the Worker protocol and records measurement cache/fallback counters. It does not yet attach a complete per-run font readiness/fingerprint report to the exact typeset job.
+- EventLog/Ledger/diagnostics-v2/Testing Tab cover the basic diagnostics path. They do not yet tie each finding to a first-bad operation and a complete same-page sibling delta window.
+- `trace-verbosity=off` currently returns an event list without an explicit recording/completeness marker. The next safe runtime change, if approved by its tests, is additive trace metadata; an empty event list must never look like a completed zero-event audit.
+- The next implementation sequence is: trace-v2 recording metadata → pure Run Input Manifest → pure StepAudit reducer → operation/issue linkage → opt-in model checkpoints → issue-centered Testing Tab. No global wrappers or DOM geometry snapshots.
