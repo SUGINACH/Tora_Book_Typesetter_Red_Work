@@ -81,7 +81,7 @@ describe('IMUD Makom Bina v20.5 — isolated runtime preset import', () => {
       assert(requests.includes('presets/' + PRESET_ID + '/default_settings.json'),
         'default preset fetched from its isolated source directory');
       for (const setId of SET_IDS.slice(1)) {
-        assert(requests.includes('presets/' + PRESET_ID + '/setting_sets/' + encodeURIComponent(setId) + '.json'),
+        assert(requests.includes('presets/' + PRESET_ID + '/setting_sets/' + setId + '.json'),
           setId + ': fetched from isolated preset directory');
       }
     } finally {
