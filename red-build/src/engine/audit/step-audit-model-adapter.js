@@ -849,6 +849,16 @@ function createStepAuditModelAdapter(options = {}) {
         else if (parsedPage && parsedPage.columnIndex != null) candidates = elems.filter((el) => el.elementId === 'column:' + resolvedPageId + ':' + parsedPage.columnIndex);
         else if (parsedPage) candidates = elems.filter((el) => el.elementId === 'page-flow:' + resolvedPageId);
         else candidates = [];
+      } else if (resolvedTargetId) {
+        candidates = pageRows.flatMap((row) => (row.elements || [])
+          .filter((el) => el.elementId === resolvedTargetId)
+          .map((el) => ({ pageId: row.pageId, element: el })));
+        if (candidates.length === 1) {
+          resolvedPageId = candidates[0].pageId;
+          candidates = [candidates[0].element];
+        } else if (candidates.length > 1) {
+          mapReason = 'element-id-matches-multiple-pages';
+        }
       } else if (parenTarget) {
         candidates = pageRows.flatMap((row) => (row.elements || [])
           .filter((el) => el.role === 'paren-range' && el.attributes.rangeId === parenTarget)
@@ -883,7 +893,9 @@ function createStepAuditModelAdapter(options = {}) {
       }
 
       if (!resolvedTargetId && candidates.length === 1) resolvedTargetId = candidates[0].elementId;
-      if (!resolvedPageId || !resolvedTargetId || candidates.length !== 1) {
+      const mappingResolved = !!resolvedPageId && !!resolvedTargetId && candidates.length === 1;
+      if (mappingResolved) mapReason = null; // a unique semantic identity outranks an ambiguous page-index hint
+      if (!mappingResolved) {
         mapReason = mapReason || (candidates.length > 1 ? 'target-matches-multiple-elements' : 'no-stable-page-or-element-match');
         capture.unmappedIssues.push({ issueId: issue.issue_id, kind: issue.kind, target, page: issue.page, reason: mapReason });
         capture.complete = false;

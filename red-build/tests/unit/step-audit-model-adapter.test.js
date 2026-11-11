@@ -270,6 +270,30 @@ describe('StepAudit RED model adapter', () => {
     assertEq(snap.capture.complete, true);
   });
 
+  it('uses a unique semantic parenthesis range when page-index mapping for its first-seen stage is ambiguous', () => {
+    const adapter = createStepAuditModelAdapter();
+    const pageA = makePage(0, [[line(1, 't7', 'תחילת סוגר')], []], {
+      parenRanges: [{ id: 'p1@t7', tokenId: 't7', startPage: 0, startCol: 0, endPage: 1, endCol: 1 }]
+    });
+    adapter.snapshot({ pages: [pageA], stage: 'protections', seq: 1, settings: {} });
+
+    pageA.index = 1;
+    const pageB = makePage(0, [[], []]);
+    adapter.snapshot({ pages: [pageB, pageA], stage: 'protections', seq: 2, settings: {} });
+
+    const ledger = { issues: new Map([['paren', {
+      issue_id: 'paren', kind: 'paren-cross-boundary', target: 'p1@t7', page: 0,
+      first_seen_stage: 'protections', status: 'created', transitions: [], candidates: []
+    }]]) };
+    const snap = adapter.snapshot({
+      pages: [pageB, pageA], ledger, stage: 'render', seq: 3, settings: {},
+      evaluatedKindsByPage: { 'page-object-1': ['paren-cross-boundary'], 'page-object-2': [] }
+    });
+    assertEq(snap.issues[0].mapStatus, 'mapped');
+    assertEq(snap.issues[0].mapReason, null);
+    assertEq(snap.issues[0].pageId, 'page-object-1');
+  });
+
   it('does not map an opaque parenthetical target to page-flow', () => {
     const adapter = createStepAuditModelAdapter();
     const page = makePage(0, [[line(1, 't1', 'טקסט')], []]);
