@@ -4,7 +4,7 @@
 
 const CHANGE_TYPES = Object.freeze([
   'added', 'removed', 'moved', 'resized', 'restyled',
-  'reparented', 'structuralChanged', 'split', 'merged'
+  'reparented', 'structuralChanged', 'textChanged', 'split', 'merged'
 ]);
 
 function isPlainObject(value) {
@@ -14,6 +14,7 @@ function isPlainObject(value) {
 }
 
 function stableStringify(value) {
+  if (value === undefined) return 'null';
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) throw new TypeError('non-finite number');
@@ -74,7 +75,7 @@ function normalizeGeometry(raw, capture) {
 }
 
 function normalizeFinding(raw, capture) {
-  const issueId = asId(raw && (raw.issueId || raw.issue_id));
+  const issueId = asId(raw && (raw.issueId || raw.issue_id || raw.id));
   const kind = asId(raw && raw.kind);
   if (!issueId || !kind) {
     markIncomplete(capture, 'finding-without-stable-id-or-kind');
@@ -213,6 +214,49 @@ function uniqueElementMap(page) {
   return map;
 }
 
+function uniqueGlobalElementMap(checkpoint, capture) {
+  const locations = new Map();
+  for (const page of checkpoint.pages) {
+    if (!page.pageId || page.ambiguousElementIds.length) continue;
+    for (const element of page.elements) {
+      if (!element.elementId) continue;
+      const list = locations.get(element.elementId) || [];
+      list.push({ pageId: page.pageId, pageIndex: page.pageIndex, element });
+      locations.set(element.elementId, list);
+    }
+  }
+  const unique = new Map();
+  for (const [id, entries] of locations) {
+    if (entries.length === 1) unique.set(id, entries[0]);
+    else markIncomplete(capture, 'duplicate-cross-page-element-identity');
+  }
+  return unique;
+}
+
+function computePageMoves(beforeCheckpoint, afterCheckpoint, capture) {
+  const before = uniqueGlobalElementMap(beforeCheckpoint, capture);
+  const after = uniqueGlobalElementMap(afterCheckpoint, capture);
+  const moves = [];
+  for (const [elementId, current] of after) {
+    const previous = before.get(elementId);
+    if (!previous || previous.pageId === current.pageId) continue;
+    moves.push({
+      elementId,
+      role: current.element.role,
+      fromPageId: previous.pageId,
+      toPageId: current.pageId,
+      fromPageIndex: previous.pageIndex,
+      toPageIndex: current.pageIndex,
+      before: previous.element.geometry,
+      after: current.element.geometry,
+      fromCheckpoint: beforeCheckpoint.checkpointId,
+      toCheckpoint: afterCheckpoint.checkpointId
+    });
+  }
+  moves.sort((a, b) => a.elementId.localeCompare(b.elementId));
+  return moves;
+}
+
 function sameData(a, b) {
   try { return stableStringify(a == null ? null : a) === stableStringify(b == null ? null : b); }
   catch (_) { return false; }
@@ -227,7 +271,7 @@ function computePageDelta(previousCheckpoint, currentCheckpoint, pageId, previou
   const afterMap = uniqueElementMap(currentPage);
   const beforeIds = new Set(beforeMap.keys());
   const afterIds = new Set(afterMap.keys());
-  const added = [], removed = [], moved = [], resized = [], restyled = [];
+  const added = [], removed = [], moved = [], resized = [], restyled = [], textChanged = [];
   const reparented = [], structuralChanged = [], split = [], merged = [];
   let unchanged = 0;
 
@@ -261,6 +305,10 @@ function computePageDelta(previousCheckpoint, currentCheckpoint, pageId, previou
       restyled.push({ elementId: id, before: before.style, after: after.style });
       didChange = true;
     }
+    if (before.textDigest !== after.textDigest) {
+      textChanged.push({ elementId: id, before: before.textDigest, after: after.textDigest });
+      didChange = true;
+    }
     if (before.parentId !== after.parentId || before.columnId !== after.columnId) {
       reparented.push({ elementId: id, before: { parentId: before.parentId, columnId: before.columnId }, after: { parentId: after.parentId, columnId: after.columnId } });
       didChange = true;
@@ -273,16 +321,35 @@ function computePageDelta(previousCheckpoint, currentCheckpoint, pageId, previou
   }
 
   for (const [id, before] of beforeMap) if (!afterIds.has(id)) removed.push(before);
+
+  // Lineage must prove a real split (one old element replaced by 2+ new
+  // children) or merge (2+ old elements replaced by one new element).
+  // A lone lineage annotation is not enough evidence.
+  const splitGroups = new Map();
   for (const element of currentPage.elements) {
-    if (!element.elementId || !element.lineage || !Array.isArray(element.lineage.fromIds)) continue;
-    const fromIds = element.lineage.fromIds.filter((id) => beforeMap.has(id));
-    if (!fromIds.length) continue;
-    if (element.lineage.kind === 'split') split.push({ fromIds: fromIds.sort(), toIds: [element.elementId] });
-    if (element.lineage.kind === 'merge') merged.push({ fromIds: fromIds.sort(), toIds: [element.elementId] });
+    if (!element.elementId || beforeMap.has(element.elementId) || !element.lineage
+      || element.lineage.kind !== 'split' || !Array.isArray(element.lineage.fromIds)) continue;
+    const sources = [...new Set(element.lineage.fromIds.filter((id) => beforeMap.has(id) && !afterMap.has(id)))].sort();
+    if (sources.length !== 1) continue;
+    const sourceId = sources[0];
+    const destinations = splitGroups.get(sourceId) || [];
+    destinations.push(element.elementId);
+    splitGroups.set(sourceId, destinations);
+  }
+  for (const [sourceId, destinations] of splitGroups) {
+    const toIds = [...new Set(destinations)].sort();
+    if (toIds.length >= 2) split.push({ elementId: toIds[0], fromIds: [sourceId], toIds });
+  }
+
+  for (const element of currentPage.elements) {
+    if (!element.elementId || beforeMap.has(element.elementId) || !element.lineage
+      || element.lineage.kind !== 'merge' || !Array.isArray(element.lineage.fromIds)) continue;
+    const fromIds = [...new Set(element.lineage.fromIds)].filter((id) => beforeMap.has(id) && !afterMap.has(id)).sort();
+    if (fromIds.length >= 2) merged.push({ elementId: element.elementId, fromIds, toIds: [element.elementId] });
   }
 
   const sortById = (a, b) => String(a.elementId || '').localeCompare(String(b.elementId || ''));
-  for (const arr of [added, removed, moved, resized, restyled, reparented, structuralChanged]) arr.sort(sortById);
+  for (const arr of [added, removed, moved, resized, restyled, textChanged, reparented, structuralChanged]) arr.sort(sortById);
   split.sort((a, b) => a.toIds[0].localeCompare(b.toIds[0]));
   merged.sort((a, b) => a.toIds[0].localeCompare(b.toIds[0]));
 
@@ -303,7 +370,7 @@ function computePageDelta(previousCheckpoint, currentCheckpoint, pageId, previou
     afterMetrics: currentPage.metrics,
     inventoryComplete: !previousPage.elementsTruncated && !currentPage.elementsTruncated
       && !previousPage.ambiguousElementIds.length && !currentPage.ambiguousElementIds.length,
-    added, removed, moved, resized, restyled, reparented, structuralChanged, split, merged,
+    added, removed, moved, resized, restyled, textChanged, reparented, structuralChanged, split, merged,
     unchanged
   };
 }
@@ -449,7 +516,7 @@ function classifyIssue(issue, observations, targetResolved, pageResolved) {
   }
   return { verdict: 'unresolved', reason: 'no-provable-before-after-transition' };
 }
-function makeIssueWindows(issues, checkpoints, pageDeltas, capture) {
+function makeIssueWindows(issues, checkpoints, pageDeltas, pageMoves, capture) {
   const allIssueFindings = new Map();
   for (const cp of checkpoints) {
     const pageMap = uniquePageMap(cp);
@@ -462,6 +529,12 @@ function makeIssueWindows(issues, checkpoints, pageDeltas, capture) {
     }
   }
   const deltaByToPage = new Map(pageDeltas.map((d) => [String(d.toCheckpoint) + '::' + String(d.pageId), d]));
+  const movesByCheckpoint = new Map();
+  for (const move of pageMoves) {
+    const list = movesByCheckpoint.get(move.toCheckpoint) || [];
+    list.push(move);
+    movesByCheckpoint.set(move.toCheckpoint, list);
+  }
 
   return issues.map((rawIssue) => {
     const issueId = asId(rawIssue && (rawIssue.issue_id || rawIssue.issueId));
@@ -507,6 +580,10 @@ function makeIssueWindows(issues, checkpoints, pageDeltas, capture) {
       const siblings = page.elements.filter((el) => el.elementId !== targetElementId);
       const delta = i > 0 ? deltaByToPage.get(String(cp.checkpointId) + '::' + String(pageId)) || null : null;
       const siblingDeltas = filterSiblingDelta(delta, targetElementId);
+      const checkpointMoves = movesByCheckpoint.get(cp.checkpointId) || [];
+      const pageMovesForWindow = checkpointMoves.filter((move) => move.fromPageId === pageId || move.toPageId === pageId);
+      const siblingPageMoves = pageMovesForWindow.filter((move) => move.elementId !== targetElementId);
+      const targetPageMove = pageMovesForWindow.find((move) => move.elementId === targetElementId) || null;
       pageTimeline.push({
         checkpointId: cp.checkpointId, seq: cp.seq, stage: cp.stage, operationId: cp.operationId,
         pageState: 'present', issueState,
@@ -515,6 +592,8 @@ function makeIssueWindows(issues, checkpoints, pageDeltas, capture) {
         siblingInventory: siblings,
         siblingInventoryComplete: !page.elementsTruncated && !page.ambiguousElementIds.length,
         siblingDeltas,
+        siblingPageMoves,
+        targetPageMove,
         pageMetrics: page.metrics,
         pageFindings: page.findings.filter((f) => f.issueId !== issueId)
       });
@@ -577,7 +656,9 @@ function buildStepAudit(input = {}, options = {}) {
 
   const pageDeltas = [];
   const pageTransitions = [];
+  const pageMoves = [];
   for (let i = 1; i < checkpoints.length; i++) {
+    pageMoves.push(...computePageMoves(checkpoints[i - 1], checkpoints[i], capture));
     const before = uniquePageMap(checkpoints[i - 1]);
     const after = uniquePageMap(checkpoints[i]);
     for (const [pageId, currentPage] of after) {
@@ -594,7 +675,7 @@ function buildStepAudit(input = {}, options = {}) {
   pageTransitions.sort((a, b) => a.checkpointId.localeCompare(b.checkpointId) || a.pageId.localeCompare(b.pageId));
 
   const issues = Array.isArray(input.issues) ? input.issues : [];
-  const issueWindows = makeIssueWindows(issues, checkpoints, pageDeltas, capture);
+  const issueWindows = makeIssueWindows(issues, checkpoints, pageDeltas, pageMoves, capture);
   return {
     schema: 'red-step-audit-v1',
     capture: {
@@ -606,7 +687,7 @@ function buildStepAudit(input = {}, options = {}) {
       ambiguousElementIds: capture.ambiguousElementIds,
       reasons: [...capture.reasons].sort()
     },
-    checkpoints, pageTransitions, pageDeltas, issueWindows
+    checkpoints, pageTransitions, pageMoves, pageDeltas, issueWindows
   };
 }
 

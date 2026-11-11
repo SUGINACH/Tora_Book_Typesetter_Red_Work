@@ -70,6 +70,53 @@ describe('StepAudit reducer — pure page/element deltas', () => {
     assertEq(win.pageTimeline[1].siblingInventoryComplete, true);
   });
 
+  it('records content changes separately from movement and style changes', () => {
+    const before = page({ elements: [el('text-1', { x: 0, y: 0, w: 100, h: 20 }, { textDigest: 'sha-a' })] });
+    const after = page({ elements: [el('text-1', { x: 0, y: 0, w: 100, h: 20 }, { textDigest: 'sha-b' })] });
+    const result = buildStepAudit({ checkpoints: [cp('cp1', 1, 'measure', [before]), cp('cp2', 2, 'line-plan', [after], 'op-line')] });
+    assertEq(result.pageDeltas[0].textChanged.map(x => x.elementId), ['text-1']);
+    assertEq(result.pageDeltas[0].moved.length, 0);
+    assertEq(result.pageDeltas[0].resized.length, 0);
+  });
+
+  it('detects a stable element moving between pages, not only page-local add/remove', () => {
+    const pageA1 = page({ pageId: 'page-A', elements: [el('moving-1', { x: 0, y: 0, w: 100, h: 20 })] });
+    const pageB1 = page({ pageId: 'page-B', pageIndex: 1, elements: [] });
+    const pageA2 = page({ pageId: 'page-A', elements: [] });
+    const pageB2 = page({ pageId: 'page-B', pageIndex: 1, elements: [el('moving-1', { x: 0, y: 4, w: 100, h: 20 })] });
+    const result = buildStepAudit({
+      checkpoints: [cp('cp1', 1, 'page-plan', [pageA1, pageB1]), cp('cp2', 2, 'refit', [pageA2, pageB2], 'op-refit')]
+    });
+    assertEq(result.pageMoves.length, 1);
+    assertEq(result.pageMoves[0].elementId, 'moving-1');
+    assertEq(result.pageMoves[0].fromPageId, 'page-A');
+    assertEq(result.pageMoves[0].toPageId, 'page-B');
+  });
+
+  it('reports split and merge only when lineage replaces real source identities', () => {
+    const beforeSplit = page({ elements: [el('parent', { x: 0, y: 0, w: 200, h: 40 })] });
+    const afterSplit = page({ elements: [
+      el('child-1', { x: 0, y: 0, w: 100, h: 20 }, { lineage: { kind: 'split', fromIds: ['parent'] } }),
+      el('child-2', { x: 0, y: 22, w: 100, h: 18 }, { lineage: { kind: 'split', fromIds: ['parent'] } })
+    ] });
+    const splitResult = buildStepAudit({ checkpoints: [cp('s1', 1, 'measure', [beforeSplit]), cp('s2', 2, 'line-plan', [afterSplit], 'op-split')] });
+    assertEq(splitResult.pageDeltas[0].split.length, 1);
+    assertEq(splitResult.pageDeltas[0].split[0].fromIds, ['parent']);
+    assertEq(splitResult.pageDeltas[0].split[0].toIds, ['child-1', 'child-2']);
+
+    const beforeMerge = page({ elements: [
+      el('part-1', { x: 0, y: 0, w: 100, h: 20 }),
+      el('part-2', { x: 0, y: 22, w: 100, h: 20 })
+    ] });
+    const afterMerge = page({ elements: [
+      el('whole', { x: 0, y: 0, w: 200, h: 42 }, { lineage: { kind: 'merge', fromIds: ['part-1', 'part-2'] } })
+    ] });
+    const mergeResult = buildStepAudit({ checkpoints: [cp('m1', 1, 'measure', [beforeMerge]), cp('m2', 2, 'line-plan', [afterMerge], 'op-merge')] });
+    assertEq(mergeResult.pageDeltas[0].merged.length, 1);
+    assertEq(mergeResult.pageDeltas[0].merged[0].fromIds, ['part-1', 'part-2']);
+    assertEq(mergeResult.pageDeltas[0].merged[0].toIds, ['whole']);
+  });
+
   it('does not treat a kind that was not evaluated as a clean previous state', () => {
     const before = page({ evaluatedKinds: [], elements: [el('target', { x: 0, y: 0, w: 100, h: 20 })] });
     const after = page({
